@@ -8,11 +8,10 @@ My family tree, maintained in [Ahnenblatt](https://www.ahnenblatt.de/), plus Pyt
 |---|---|---|
 | `src/` | yes | Source code: `build_web.py` (CSV → web viewer), `index.html` (viewer template) |
 | `docs/` | yes | Blank questionnaire for collecting data from relatives |
-| `data/` | **no** (private) | `ahnenblatt/` (`.ahn` + CSV export), `exports/` (Ahnenblatt HTML + PDF reports), `archive/` |
-| `img/` | **no** (private) | Profile pictures (for later use) |
+| `data/` | **no** (private) | `ahnenblatt/` (`.ahn` + CSV export), `exports/` (Ahnenblatt HTML + PDF reports), `img/` (profile pictures, for later use), `archive/` |
 | `web/` | **no** (generated) | Shareable viewer: `index.html` + `data.js`. Zip it to share, or upload to a web host |
 
-`data/`, `img/` and `web/` contain personal data of living people and are gitignored.
+`data/` and `web/` contain personal data of living people and are gitignored.
 
 ## Build the web viewer
 

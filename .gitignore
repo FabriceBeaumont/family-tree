@@ -1,8 +1,6 @@
 # --- Private family data: never commit ---
 /data/
 /web/
-/img/*
-!/img/.gitkeep
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
