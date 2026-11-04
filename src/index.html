@@ -398,6 +398,7 @@
         Math.max(1, W * mmScale), Math.max(1, H * mmScale));
     }
     function drawMinimap(t) {
+      if (!mm.width || !mm.height) return;   // minimap hidden (narrow screens)
       ctx.clearRect(0, 0, mm.width, mm.height); ctx.drawImage(base, 0, 0);
       const [w, h] = size();
       const x0 = -t.x / t.k, y0 = -t.y / t.k;
