@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
 <title>Stammbaum Explorer</title>
 <style>
   :root {
@@ -93,6 +94,14 @@
     border-radius: 10px; box-shadow: var(--shadow); cursor: crosshair; }
   #hint { position: fixed; left: 244px; bottom: 16px; font-size: 12px; color: var(--muted); }
   #loading { position: fixed; inset: 0; display: grid; place-items: center; font-size: 18px; color: var(--muted); }
+  #loading[hidden], #lock[hidden] { display: none; }
+  #lock { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: var(--bg); padding: 16px; }
+  #lockForm { width: min(340px, 100%); background: var(--panel); border-radius: 14px; box-shadow: var(--shadow);
+    padding: 24px; display: grid; gap: 12px; }
+  #lockForm h1 { margin: 0; font-size: 22px; }
+  #lockForm p { margin: 0; color: var(--muted); font-size: 14px; }
+  #lockPw { padding: 10px 14px; font-size: 15px; border: 1px solid #d8d1c0; border-radius: 10px; background: #fff; color: var(--ink); }
+  #lockMsg { min-height: 1.2em; font-size: 14px; color: var(--female); }
 
   @media (max-width: 700px) {
     #panel { top: auto; left: 8px; right: 8px; width: auto; height: 55vh; bottom: 8px;
@@ -105,6 +114,15 @@
 <body>
 <svg id="map"><g id="viewport"><g id="edges"></g><g id="fams"></g><g id="people"></g></g></svg>
 <div id="loading">Layout wird berechnet…</div>
+<div id="lock" hidden>
+  <form id="lockForm">
+    <h1>Stammbaum</h1>
+    <p>Dieser Stammbaum ist passwortgeschützt.</p>
+    <input id="lockPw" type="password" placeholder="Passwort" autocomplete="current-password" required>
+    <button class="btn" type="submit">Öffnen</button>
+    <div id="lockMsg" role="status"></div>
+  </form>
+</div>
 
 <div id="topbar">
   <div id="searchBox">
@@ -123,11 +141,10 @@
 <script src="https://cdn.jsdelivr.net/npm/elkjs@0.9.3/lib/elk.bundled.js"></script>
 <script src="data.js"></script>
 <script>
-(() => {
+function startViewer(data) {
   const HOME_GIVEN = "Fabrice", HOME_SURNAME = "Beaumont"; // start person
   const W = 184, H = 64;                                     // person card size
 
-  const data = window.FAMILY_DATA;
   const people = new Map(data.people.map(p => [p.id, { ...p, parentFam: null, spouseFams: [] }]));
   const fams = new Map(data.families.map(f => [f.id, f]));
   for (const f of data.families) {
@@ -427,7 +444,49 @@
   requestAnimationFrame(() => setTimeout(() => render().catch(err => {
     document.getElementById("loading").textContent = "Layout-Fehler: " + err.message; console.error(err);
   }), 30));
-})();
+}
+
+// ---------- data loading: plain (web/data.js) or password-encrypted (public/data.enc.js) ----------
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function decrypt(enc, password) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: b64(enc.salt), iterations: enc.iter, hash: "SHA-256" },
+    base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(enc.iv) }, key, b64(enc.ct));
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+function showLock(enc) {
+  const lock = document.getElementById("lock"), form = document.getElementById("lockForm");
+  const input = document.getElementById("lockPw"), msg = document.getElementById("lockMsg");
+  const SKEY = "stammbaum-pw";
+  async function tryOpen(pw, fromSession) {
+    msg.textContent = "Entschlüsseln…";
+    try {
+      const data = await decrypt(enc, pw);
+      try { sessionStorage.setItem(SKEY, pw); } catch {}
+      lock.remove();
+      startViewer(data);
+    } catch {
+      try { sessionStorage.removeItem(SKEY); } catch {}
+      msg.textContent = fromSession ? "" : "Falsches Passwort.";
+      input.select();
+    }
+  }
+  lock.hidden = false;
+  document.getElementById("loading").hidden = true;
+  form.addEventListener("submit", ev => {
+    ev.preventDefault();
+    document.getElementById("loading").hidden = false;
+    tryOpen(input.value, false);
+  });
+  input.focus();
+  let saved = null; try { saved = sessionStorage.getItem(SKEY); } catch {}
+  if (saved) tryOpen(saved, true);
+}
+if (window.FAMILY_DATA) startViewer(window.FAMILY_DATA);
+else if (window.FAMILY_DATA_ENC) showLock(window.FAMILY_DATA_ENC);
+else document.getElementById("loading").textContent = "Keine Daten gefunden – bitte python src/build_web.py ausführen.";
 </script>
 </body>
 </html>

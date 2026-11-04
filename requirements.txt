@@ -1,0 +1,2 @@
+# Only needed for `python src/build_web.py --publish` (encryption)
+cryptography>=42
