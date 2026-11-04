@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Stammbaum Explorer</title>
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --grid: #e2ddd0;
+    --card: #fffdf8;
+    --ink: #2b2a27;
+    --muted: #7a756a;
+    --line: #a59e8e;
+    --male: #4f7cac;
+    --female: #c0587e;
+    --unknown: #9a948a;
+    --accent: #d08a1f;
+    --panel: #fffdf8;
+    --shadow: 0 2px 10px rgba(40, 30, 10, .12);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); }
+  #map { position: fixed; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+  #map:active { cursor: grabbing; }
+
+  .edge { fill: none; stroke: var(--line); stroke-width: 1.4; }
+  .fam circle { fill: var(--card); stroke: var(--line); stroke-width: 1.4; }
+  .fam.unmarried circle { stroke-dasharray: 2 2; }
+  .person { cursor: pointer; }
+  .person rect.card { fill: var(--card); stroke: #d8d1c0; stroke-width: 1; }
+  .person rect.stripe { fill: var(--unknown); }
+  .person.M rect.stripe { fill: var(--male); }
+  .person.F rect.stripe { fill: var(--female); }
+  .person:hover rect.card { stroke: var(--accent); stroke-width: 2; }
+  .person.selected rect.card { stroke: var(--accent); stroke-width: 3; }
+  .person text { pointer-events: none; }
+  .person .given { font-size: 14px; font-weight: 600; fill: var(--ink); }
+  .person .surname { font-size: 12.5px; fill: var(--ink); }
+  .person .life { font-size: 11.5px; fill: var(--muted); }
+
+  /* lineage highlight */
+  .dimmed .person:not(.hl), .dimmed .fam:not(.hl) { opacity: .18; }
+  .dimmed .edge:not(.hl) { opacity: .12; }
+  .dimmed .edge.hl { stroke: var(--accent); stroke-width: 2.4; }
+
+  /* level of detail when zoomed far out */
+  .far .person text { display: none; }
+  .far .person rect.card { stroke-width: 0; fill: var(--unknown); }
+  .far .person.M rect.card { fill: var(--male); }
+  .far .person.F rect.card { fill: var(--female); }
+  .far .person.selected rect.card { fill: var(--accent); }
+  .edge, .fam circle { vector-effect: non-scaling-stroke; }
+
+  #topbar { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; gap: 8px;
+    align-items: flex-start; pointer-events: none; }
+  #topbar > * { pointer-events: auto; }
+  #searchBox { position: relative; width: min(360px, 100%); }
+  #search { width: 100%; padding: 10px 14px; font-size: 15px; border: 1px solid #d8d1c0;
+    border-radius: 10px; background: var(--panel); box-shadow: var(--shadow); color: var(--ink); }
+  #results { list-style: none; margin: 4px 0 0; padding: 4px; background: var(--panel);
+    border-radius: 10px; box-shadow: var(--shadow); max-height: 50vh; overflow: auto; display: none; }
+  #results.open { display: block; }
+  #results li { padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  #results li:hover, #results li.active { background: #f1e8d6; }
+  #results small { color: var(--muted); margin-left: 6px; }
+  .btn { padding: 9px 12px; font-size: 14px; border: 1px solid #d8d1c0; border-radius: 10px;
+    background: var(--panel); box-shadow: var(--shadow); cursor: pointer; color: var(--ink); white-space: nowrap; }
+  .btn:hover { border-color: var(--accent); }
+
+  #panel { position: fixed; top: 64px; right: 12px; bottom: 12px; width: 340px; background: var(--panel);
+    border-radius: 14px; box-shadow: var(--shadow); padding: 18px 18px 22px; overflow: auto;
+    transform: translateX(calc(100% + 24px)); transition: transform .25s ease; }
+  #panel.open { transform: none; }
+  #panel h2 { margin: 0 28px 2px 0; font-size: 20px; line-height: 1.25; }
+  #panel .sub { color: var(--muted); font-size: 14px; margin-bottom: 14px; }
+  #panel .close { position: absolute; top: 12px; right: 12px; border: 0; background: none;
+    font-size: 22px; cursor: pointer; color: var(--muted); }
+  #panel dl { display: grid; grid-template-columns: 96px 1fr; gap: 6px 10px; margin: 0 0 14px; font-size: 14px; }
+  #panel dt { color: var(--muted); }
+  #panel dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  #panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 16px 0 6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border: 1px solid #d8d1c0; background: #fff; border-radius: 999px; padding: 4px 10px;
+    font-size: 13px; cursor: pointer; color: var(--ink); }
+  .chip.M { border-left: 4px solid var(--male); }
+  .chip.F { border-left: 4px solid var(--female); }
+  .chip:hover { border-color: var(--accent); }
+  .chip small { color: var(--muted); }
+
+  #minimap { position: fixed; left: 12px; bottom: 12px; width: 220px; height: 150px; background: rgba(255,253,248,.92);
+    border-radius: 10px; box-shadow: var(--shadow); cursor: crosshair; }
+  #hint { position: fixed; left: 244px; bottom: 16px; font-size: 12px; color: var(--muted); }
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; font-size: 18px; color: var(--muted); }
+  #loading[hidden], #lock[hidden] { display: none; }
+  #lock { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: var(--bg); padding: 16px; }
+  #lockForm { width: min(340px, 100%); background: var(--panel); border-radius: 14px; box-shadow: var(--shadow);
+    padding: 24px; display: grid; gap: 12px; }
+  #lockForm h1 { margin: 0; font-size: 22px; }
+  #lockForm p { margin: 0; color: var(--muted); font-size: 14px; }
+  #lockPw { padding: 10px 14px; font-size: 15px; border: 1px solid #d8d1c0; border-radius: 10px; background: #fff; color: var(--ink); }
+  #lockMsg { min-height: 1.2em; font-size: 14px; color: var(--female); }
+
+  @media (max-width: 700px) {
+    #panel { top: auto; left: 8px; right: 8px; width: auto; height: 55vh; bottom: 8px;
+      transform: translateY(calc(100% + 16px)); }
+    #minimap, #hint { display: none; }
+    #topbar { left: 8px; right: 8px; }
+  }
+</style>
+</head>
+<body>
+<svg id="map"><g id="viewport"><g id="edges"></g><g id="fams"></g><g id="people"></g></g></svg>
+<div id="loading">Layout wird berechnet…</div>
+<div id="lock" hidden>
+  <form id="lockForm">
+    <h1>Stammbaum</h1>
+    <p>Dieser Stammbaum ist passwortgeschützt.</p>
+    <input id="lockPw" type="password" placeholder="Passwort" autocomplete="current-password" required>
+    <button class="btn" type="submit">Öffnen</button>
+    <div id="lockMsg" role="status"></div>
+  </form>
+</div>
+
+<div id="topbar">
+  <div id="searchBox">
+    <input id="search" type="search" placeholder="Person suchen…" autocomplete="off">
+    <ul id="results"></ul>
+  </div>
+  <button class="btn" id="btnHome" title="Zur Startperson">⌂ Start</button>
+  <button class="btn" id="btnFit" title="Gesamten Baum zeigen">⤢ Alles</button>
+</div>
+
+<aside id="panel"><button class="close" id="panelClose" aria-label="Schließen">×</button><div id="panelBody"></div></aside>
+<canvas id="minimap"></canvas>
+<div id="hint">Ziehen = verschieben · Mausrad = zoomen · Klick = Details &amp; Linie</div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/elkjs@0.9.3/lib/elk.bundled.js"></script>
+<script src="data.enc.js"></script>
+<script>
+function startViewer(data) {
+  const HOME_GIVEN = "Fabrice", HOME_SURNAME = "Beaumont"; // start person
+  const W = 184, H = 64;                                     // person card size
+
+  const people = new Map(data.people.map(p => [p.id, { ...p, parentFam: null, spouseFams: [] }]));
+  const fams = new Map(data.families.map(f => [f.id, f]));
+  for (const f of data.families) {
+    for (const c of f.children) people.get(c).parentFam = f.id;
+    for (const s of [f.husband, f.wife]) if (s) people.get(s).spouseFams.push(f.id);
+  }
+
+  const fullName = p => [p.given, p.surname].filter(Boolean).join(" ") || "Unbekannt";
+  const lifeSpan = p => (p.by || p.dy) ? `${p.by ? "* " + p.by : ""}${p.by && p.dy ? "  " : ""}${p.dy ? "† " + p.dy : ""}` : "";
+  const clip = (s, n) => s.length > n ? s.slice(0, n - 1) + "…" : s;
+  const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+  // ---------- layout ----------
+  // Partners are merged into one "couple block" (a chain for multiple marriages) so they
+  // always sit side by side. dagre then lays out blocks + small family nodes in alternating ranks.
+  const GAP = 16;
+  const blockOf = new Map();   // person id -> block id
+  const blocks = new Map();    // block id -> [person ids in left-to-right order]
+  {
+    const adj = new Map([...people.keys()].map(id => [id, []]));
+    for (const f of fams.values()) if (f.husband && f.wife) { adj.get(f.husband).push(f.wife); adj.get(f.wife).push(f.husband); }
+    const seen = new Set();
+    for (const id of people.keys()) {
+      if (seen.has(id)) continue;
+      const comp = []; const stack = [id]; seen.add(id);       // connected spouse component
+      while (stack.length) { const x = stack.pop(); comp.push(x); for (const y of adj.get(x)) if (!seen.has(y)) { seen.add(y); stack.push(y); } }
+      // order as a path: start at an end (fewest partners), walk greedily
+      const start = comp.reduce((a, b) => adj.get(b).length < adj.get(a).length ? b : a);
+      const order = [], used = new Set(); let cur = start;
+      while (cur) { order.push(cur); used.add(cur); cur = adj.get(cur).find(y => !used.has(y)); }
+      for (const x of comp) if (!used.has(x)) order.push(x);
+      // man left of woman for simple couples
+      if (order.length === 2 && people.get(order[0]).sex === "F" && people.get(order[1]).sex === "M") order.reverse();
+      const bid = "B" + blocks.size;
+      blocks.set(bid, order);
+      for (const x of order) blockOf.set(x, bid);
+    }
+  }
+  // ELK layered layout (better crossing minimisation than dagre for genealogies)
+  const MARGIN = 300;
+  const elkGraph = {
+    id: "root",
+    layoutOptions: {
+      "elk.algorithm": "layered",
+      "elk.direction": "DOWN",
+      "elk.spacing.nodeNode": "40",
+      "elk.layered.spacing.nodeNodeBetweenLayers": "34",
+      "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
+      "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
+      "elk.layered.thoroughness": "20",
+      "elk.separateConnectedComponents": "true",
+      "elk.spacing.componentComponent": "120",
+      "elk.edgeRouting": "POLYLINE",
+    },
+    children: [], edges: [],
+  };
+  for (const [bid, ids] of blocks) elkGraph.children.push({ id: bid, width: ids.length * W + (ids.length - 1) * GAP, height: H });
+  for (const f of fams.values()) {
+    elkGraph.children.push({ id: f.id, width: 12, height: 12 });
+    const parentBlock = blockOf.get(f.husband || f.wife);
+    elkGraph.edges.push({ id: "e" + elkGraph.edges.length, sources: [parentBlock], targets: [f.id] });
+    const childBlocks = new Set(f.children.map(c => blockOf.get(c)));
+    childBlocks.delete(parentBlock);
+    for (const cb of childBlocks) elkGraph.edges.push({ id: "e" + elkGraph.edges.length, sources: [f.id], targets: [cb] });
+  }
+
+  async function render() {
+    const laid = await new ELK().layout(elkGraph);
+    const node = new Map(laid.children.map(n => [n.id, n]));   // ELK gives top-left corners
+    // resolve person positions inside their block
+    const P = new Map();
+    for (const [bid, ids] of blocks) {
+      const b = node.get(bid);
+      let x = MARGIN + b.x + W / 2;
+      for (const id of ids) { P.set(id, { x, y: MARGIN + b.y + H / 2 }); x += W + GAP; }
+    }
+    // family dot: horizontally between the two partners, vertically from the layout
+    for (const f of fams.values()) {
+      const ps = [f.husband, f.wife].filter(Boolean).map(id => P.get(id));
+      const n = node.get(f.id);
+      P.set(f.id, { x: ps.reduce((s, p) => s + p.x, 0) / ps.length, y: MARGIN + n.y + n.height / 2 });
+    }
+    const pos = id => P.get(id);
+    const bounds = { w: laid.width + 2 * MARGIN, h: laid.height + 2 * MARGIN };
+
+    const svg = d3.select("#map");
+    const viewport = d3.select("#viewport");
+
+    // edges
+    const edgeData = [];
+    for (const f of fams.values()) {
+      const fp = pos(f.id);
+      const partners = [f.husband, f.wife].filter(Boolean);
+      if (partners.length === 2) {          // marriage line between the cards, then down to the dot
+        const [a, b] = partners.map(pos).sort((u, v) => u.x - v.x);
+        edgeData.push({ a: partners[0], b: f.id,
+          d: `M${a.x + W / 2},${a.y}H${b.x - W / 2}M${fp.x},${a.y}V${fp.y - 6}` });
+        edgeData.push({ a: partners[1], b: f.id, d: "" });
+      } else {
+        const sp = pos(partners[0]);
+        edgeData.push({ a: partners[0], b: f.id, d: curve(sp.x, sp.y + H / 2, fp.x, fp.y - 6) });
+      }
+      for (const c of f.children) {
+        const cp = pos(c);
+        edgeData.push({ a: f.id, b: c, d: curve(fp.x, fp.y + 6, cp.x, cp.y - H / 2) });
+      }
+    }
+    function curve(x1, y1, x2, y2) {
+      const ym = (y1 + y2) / 2;
+      return `M${x1},${y1}C${x1},${ym} ${x2},${ym} ${x2},${y2}`;
+    }
+    const edgeSel = d3.select("#edges").selectAll("path").data(edgeData).join("path").attr("class", "edge").attr("d", e => e.d);
+
+    // family dots
+    const famSel = d3.select("#fams").selectAll("g").data([...fams.values()]).join("g")
+      .attr("class", f => "fam" + (f.unmarried ? " unmarried" : ""))
+      .attr("transform", f => `translate(${pos(f.id).x},${pos(f.id).y})`);
+    famSel.append("circle").attr("r", 6);
+    famSel.append("title").text(f => {
+      const names = [f.husband, f.wife].filter(Boolean).map(id => fullName(people.get(id))).join(" ⚭ ");
+      return names + (f.marrDate ? `\n⚭ ${f.marrDate}` : "") + (f.marrPlace ? ` in ${f.marrPlace}` : "");
+    });
+
+    // person cards
+    const personSel = d3.select("#people").selectAll("g").data([...people.values()]).join("g")
+      .attr("class", p => `person ${p.sex}`)
+      .attr("transform", p => `translate(${pos(p.id).x - W / 2},${pos(p.id).y - H / 2})`)
+      .on("click", (ev, p) => { ev.stopPropagation(); select(p.id); });
+    personSel.append("rect").attr("class", "card").attr("width", W).attr("height", H).attr("rx", 8);
+    personSel.append("rect").attr("class", "stripe").attr("width", 6).attr("height", H).attr("rx", 3);
+    personSel.append("text").attr("class", "given").attr("x", 14).attr("y", 21).text(p => clip(p.given || "?", 20));
+    personSel.append("text").attr("class", "surname").attr("x", 14).attr("y", 38).text(p => clip(p.surname, 24));
+    personSel.append("text").attr("class", "life").attr("x", 14).attr("y", 55).text(lifeSpan);
+
+    // ---------- pan & zoom ----------
+    const zoom = d3.zoom().scaleExtent([0.03, 2.5]).on("zoom", ev => {
+      viewport.attr("transform", ev.transform);
+      viewport.classed("far", ev.transform.k < 0.33);
+      drawMinimap(ev.transform);
+    });
+    svg.call(zoom).on("dblclick.zoom", null).on("click", () => clearSelection());
+
+    const size = () => { const r = svg.node().getBoundingClientRect(); return [r.width, r.height]; };
+    function flyTo(x, y, k = 1, ms = 750) {
+      const [w, h] = size();
+      const panelOpen = document.getElementById("panel").classList.contains("open") && w > 700;
+      const cx = panelOpen ? (w - 360) / 2 : w / 2;
+      svg.transition().duration(ms).call(zoom.transform, d3.zoomIdentity.translate(cx - x * k, h / 2 - y * k).scale(k));
+    }
+    function fitAll(ms = 750) {
+      const [w, h] = size();
+      const k = Math.min(w / bounds.w, h / bounds.h) * 0.95;
+      svg.transition().duration(ms).call(zoom.transform,
+        d3.zoomIdentity.translate((w - bounds.w * k) / 2, (h - bounds.h * k) / 2).scale(k));
+    }
+
+    // ---------- selection & lineage ----------
+    let selected = null;
+    function lineage(id) {
+      const set = new Set([id]);
+      const up = pid => {                       // ancestors
+        const f = people.get(pid).parentFam; if (!f || set.has(f)) return;
+        set.add(f); const fm = fams.get(f);
+        for (const s of [fm.husband, fm.wife]) if (s) { set.add(s); up(s); }
+      };
+      const down = pid => {                     // descendants
+        for (const f of people.get(pid).spouseFams) {
+          if (set.has(f) && pid !== id) continue;
+          set.add(f);
+          for (const c of fams.get(f).children) if (!set.has(c)) { set.add(c); down(c); }
+        }
+      };
+      up(id); down(id);
+      return set;
+    }
+    function select(id, fly = false) {
+      selected = id;
+      const set = lineage(id);
+      viewport.classed("dimmed", true);
+      personSel.classed("hl", p => set.has(p.id)).classed("selected", p => p.id === id);
+      famSel.classed("hl", f => set.has(f.id));
+      edgeSel.classed("hl", e => set.has(e.a) && set.has(e.b));
+      showPanel(people.get(id));
+      if (fly) { const p = pos(id); flyTo(p.x, p.y, 1); }
+    }
+    function clearSelection() {
+      selected = null;
+      viewport.classed("dimmed", false);
+      personSel.classed("hl selected", false);
+      document.getElementById("panel").classList.remove("open");
+    }
+
+    // ---------- detail panel ----------
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const chip = id => { const p = people.get(id); const l = lifeSpan(p);
+      return `<button class="chip ${p.sex}" data-id="${id}">${esc(fullName(p))}${l ? ` <small>${esc(l)}</small>` : ""}</button>`; };
+    const chipList = (title, ids) => ids.length ? `<h3>${title}</h3><div class="chips">${ids.map(chip).join("")}</div>` : "";
+
+    function showPanel(p) {
+      const rows = [
+        ["Rufname", p.callName], ["Geboren", [p.birthDate, p.birthPlace].filter(Boolean).join(" in ")],
+        ["Getauft", [p.chrDate, p.chrPlace].filter(Boolean).join(" in ")],
+        ["Gestorben", [p.deathDate, p.deathPlace].filter(Boolean).join(" in ")],
+        ["Begraben", [p.burialDate, p.burialPlace].filter(Boolean).join(" in ")],
+        ["Beruf", p.occupation], ["Religion", p.religion], ["Notiz", p.note],
+      ].filter(r => r[1]);
+      const pf = p.parentFam && fams.get(p.parentFam);
+      const parents = pf ? [pf.husband, pf.wife].filter(Boolean) : [];
+      const siblings = pf ? pf.children.filter(c => c !== p.id) : [];
+      let spouses = "", children = [];
+      for (const fid of p.spouseFams) {
+        const f = fams.get(fid);
+        const other = f.husband === p.id ? f.wife : f.husband;
+        if (other) spouses += `<div class="chips" style="margin-bottom:6px">${chip(other)}</div>` +
+          (f.marrDate || f.marrPlace ? `<div class="sub" style="margin:-2px 0 8px">⚭ ${esc([f.marrDate, f.marrPlace].filter(Boolean).join(" in "))}</div>` : "");
+        children.push(...f.children);
+      }
+      document.getElementById("panelBody").innerHTML = `
+        <h2>${esc(fullName(p))}</h2><div class="sub">${esc(lifeSpan(p)) || "&nbsp;"}</div>
+        ${rows.length ? `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : ""}
+        ${chipList("Eltern", parents)}
+        ${spouses ? `<h3>Partner</h3>${spouses}` : ""}
+        ${chipList("Kinder", children)}
+        ${chipList("Geschwister", siblings)}`;
+      document.getElementById("panel").classList.add("open");
+    }
+    document.getElementById("panelBody").addEventListener("click", ev => {
+      const b = ev.target.closest("[data-id]"); if (b) select(b.dataset.id, true);
+    });
+    document.getElementById("panelClose").onclick = clearSelection;
+    document.addEventListener("keydown", ev => { if (ev.key === "Escape") clearSelection(); });
+
+    // ---------- search ----------
+    const searchEl = document.getElementById("search"), resultsEl = document.getElementById("results");
+    const index = [...people.values()].map(p => ({ p, key: norm(fullName(p) + " " + (p.callName || "")) }));
+    let active = 0, hits = [];
+    function renderResults() {
+      resultsEl.innerHTML = hits.map((p, i) =>
+        `<li data-id="${p.id}" class="${i === active ? "active" : ""}">${esc(fullName(p))}<small>${esc(lifeSpan(p))}</small></li>`).join("");
+      resultsEl.classList.toggle("open", hits.length > 0);
+    }
+    searchEl.addEventListener("input", () => {
+      const terms = norm(searchEl.value).split(/\s+/).filter(Boolean);
+      hits = terms.length ? index.filter(x => terms.every(t => x.key.includes(t))).slice(0, 15).map(x => x.p) : [];
+      active = 0; renderResults();
+    });
+    searchEl.addEventListener("keydown", ev => {
+      if (ev.key === "ArrowDown") { active = Math.min(active + 1, hits.length - 1); renderResults(); ev.preventDefault(); }
+      if (ev.key === "ArrowUp") { active = Math.max(active - 1, 0); renderResults(); ev.preventDefault(); }
+      if (ev.key === "Enter" && hits[active]) pick(hits[active].id);
+    });
+    resultsEl.addEventListener("mousedown", ev => { const li = ev.target.closest("li"); if (li) pick(li.dataset.id); });
+    searchEl.addEventListener("blur", () => setTimeout(() => resultsEl.classList.remove("open"), 150));
+    function pick(id) { resultsEl.classList.remove("open"); searchEl.blur(); select(id, true); }
+
+    // ---------- minimap ----------
+    const mm = document.getElementById("minimap"), ctx = mm.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+    mm.width = mm.clientWidth * dpr; mm.height = mm.clientHeight * dpr;
+    const mmScale = Math.min(mm.width / bounds.w, mm.height / bounds.h);
+    const mmOff = [(mm.width - bounds.w * mmScale) / 2, (mm.height - bounds.h * mmScale) / 2];
+    const base = document.createElement("canvas"); base.width = mm.width; base.height = mm.height;
+    const bctx = base.getContext("2d");
+    const colors = { M: "#4f7cac", F: "#c0587e", U: "#9a948a" };
+    for (const p of people.values()) {
+      const n = pos(p.id); bctx.fillStyle = colors[p.sex] || colors.U;
+      bctx.fillRect(mmOff[0] + (n.x - W / 2) * mmScale, mmOff[1] + (n.y - H / 2) * mmScale,
+        Math.max(1, W * mmScale), Math.max(1, H * mmScale));
+    }
+    function drawMinimap(t) {
+      if (!mm.width || !mm.height) return;   // minimap hidden (narrow screens)
+      ctx.clearRect(0, 0, mm.width, mm.height); ctx.drawImage(base, 0, 0);
+      const [w, h] = size();
+      const x0 = -t.x / t.k, y0 = -t.y / t.k;
+      ctx.strokeStyle = "#d08a1f"; ctx.lineWidth = 2 * dpr;
+      ctx.strokeRect(mmOff[0] + x0 * mmScale, mmOff[1] + y0 * mmScale, (w / t.k) * mmScale, (h / t.k) * mmScale);
+    }
+    function minimapJump(ev) {
+      const r = mm.getBoundingClientRect();
+      const x = ((ev.clientX - r.left) * dpr - mmOff[0]) / mmScale, y = ((ev.clientY - r.top) * dpr - mmOff[1]) / mmScale;
+      const k = d3.zoomTransform(svg.node()).k; flyTo(x, y, k, 0);
+    }
+    let mmDrag = false;
+    mm.addEventListener("pointerdown", ev => { mmDrag = true; mm.setPointerCapture(ev.pointerId); minimapJump(ev); });
+    mm.addEventListener("pointermove", ev => { if (mmDrag) minimapJump(ev); });
+    mm.addEventListener("pointerup", () => { mmDrag = false; });
+
+    // ---------- start ----------
+    const home = [...people.values()].find(p => p.given.startsWith(HOME_GIVEN) && p.surname === HOME_SURNAME);
+    document.getElementById("btnHome").onclick = () => home ? select(home.id, true) : fitAll();
+    document.getElementById("btnFit").onclick = () => fitAll();
+    if (home) { const n = pos(home.id); flyTo(n.x, n.y, 0.8, 0); } else fitAll(0);
+    document.getElementById("loading").remove();
+  }
+
+  // let the "loading" text paint before the (blocking) layout runs
+  requestAnimationFrame(() => setTimeout(() => render().catch(err => {
+    document.getElementById("loading").textContent = "Layout-Fehler: " + err.message; console.error(err);
+  }), 30));
+}
+
+// ---------- data loading: plain (web/data.js) or password-encrypted (public/data.enc.js) ----------
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function decrypt(enc, password) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: b64(enc.salt), iterations: enc.iter, hash: "SHA-256" },
+    base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(enc.iv) }, key, b64(enc.ct));
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+function showLock(enc) {
+  const lock = document.getElementById("lock"), form = document.getElementById("lockForm");
+  const input = document.getElementById("lockPw"), msg = document.getElementById("lockMsg");
+  const SKEY = "stammbaum-pw";
+  async function tryOpen(pw, fromSession) {
+    msg.textContent = "Entschlüsseln…";
+    try {
+      const data = await decrypt(enc, pw);
+      try { sessionStorage.setItem(SKEY, pw); } catch {}
+      lock.remove();
+      startViewer(data);
+    } catch {
+      try { sessionStorage.removeItem(SKEY); } catch {}
+      msg.textContent = fromSession ? "" : "Falsches Passwort.";
+      input.select();
+    }
+  }
+  lock.hidden = false;
+  document.getElementById("loading").hidden = true;
+  form.addEventListener("submit", ev => {
+    ev.preventDefault();
+    document.getElementById("loading").hidden = false;
+    tryOpen(input.value, false);
+  });
+  input.focus();
+  let saved = null; try { saved = sessionStorage.getItem(SKEY); } catch {}
+  if (saved) tryOpen(saved, true);
+}
+if (window.FAMILY_DATA) startViewer(window.FAMILY_DATA);
+else if (window.FAMILY_DATA_ENC) showLock(window.FAMILY_DATA_ENC);
+else document.getElementById("loading").textContent = "Keine Daten gefunden – bitte python src/build_web.py ausführen.";
+</script>
+</body>
+</html>
