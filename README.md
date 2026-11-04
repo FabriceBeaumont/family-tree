@@ -1,11 +1,15 @@
 # Our family tree 🌳
 
+🇩🇪 **[Deutsche Version: LIESMICH.md](LIESMICH.md)**
+
 An interactive map of our family — almost 800 relatives across more than nine generations.
 Move around it like a map, zoom in on any branch, and click a person to see who they were.
 
 ## 👉 View the family tree
 
 **[Open the family tree](https://fabricebeaumont.github.io/family-tree/)**
+
+*Tip: Ctrl+click (Mac: Cmd+click, phone: press and hold) opens it in a new tab.*
 
 1. Click the link above. It works on computers, tablets and phones.
 2. You will be asked for a **password**. You get it from Fabrice (the family member who looks after
