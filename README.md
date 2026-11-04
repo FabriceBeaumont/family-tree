@@ -1,41 +1,94 @@
-# family-tree
+# Our family tree 🌳
 
-My family tree, maintained in [Ahnenblatt](https://www.ahnenblatt.de/), plus Python/web tools to visualize it.
+An interactive map of our family — almost 800 relatives across more than nine generations.
+Move around it like a map, zoom in on any branch, and click a person to see who they were.
 
-## Layout
+## 👉 View the family tree
+
+**[Open the family tree](https://fabricebeaumont.github.io/family-tree/)**
+
+1. Click the link above. It works on computers, tablets and phones.
+2. You will be asked for a **password**. You get it from Fabrice (the family member who looks after
+   the tree) — just ask. The password is never written on this page.
+3. Type the password and click **Öffnen** (open). The tree loads after a few seconds.
+
+## How to use it
+
+| To… | Do this |
+|---|---|
+| Move around | Click and drag (on a phone: swipe) |
+| Zoom in or out | Mouse wheel, or pinch with two fingers |
+| Find someone | Type a name into the search box at the top left |
+| See details about a person | Click their card — a panel shows dates, places, parents, partners, children |
+| Jump to a relative | Click their name in that panel |
+| Go back to the start | Click **⌂ Start** |
+| See the whole tree at once | Click **⤢ Alles** |
+
+When you click a person, their direct line (parents, grandparents… and children, grandchildren…)
+is highlighted in orange. Click on empty space or press **Esc** to clear it.
+
+Card colors: **blue** = male, **pink** = female.
+
+## Found a mistake or know more?
+
+Missing someone, a wrong date, or an old photo? Please tell Fabrice. If you want to collect details
+about your branch, there is a simple questionnaire to fill in:
+[docs/Fragebogen Familienstammbaum.xlsx](docs/Fragebogen%20Familienstammbaum.xlsx).
+
+## Is our data safe?
+
+Yes. The family data on this website is **encrypted**: without the password it is unreadable,
+even for someone who downloads the files. Search engines are asked not to list the page.
+Please don't post the password publicly — share it only with family, and preferably not in the same
+message as the link.
+
+---
+
+## Technical information
+
+Everything below is for whoever maintains the tree.
+
+### How it works
+
+The tree is maintained in [Ahnenblatt](https://www.ahnenblatt.de/). A Python script reads
+Ahnenblatt's CSV export and builds a web viewer from it. For the website, the data is encrypted with
+a password and published with GitHub Pages.
+
+### Folder layout
 
 | Folder | Committed? | Contents |
 |---|---|---|
-| `src/` | yes | Source code: `build_web.py` (CSV → web viewer), `index.html` (viewer template) |
-| `docs/` | yes | Blank questionnaire for collecting data from relatives |
-| `data/` | **no** (private) | `ahnenblatt/` (`.ahn` + CSV export), `exports/` (Ahnenblatt HTML + PDF reports), `img/` (profile pictures, for later use), `archive/` |
-| `web/` | **no** (generated) | Private viewer with plain data: `index.html` + `data.js`. Zip it to share |
+| `src/` | yes | `build_web.py` (CSV → viewer), `index.html` (viewer template) |
 | `public/` | yes (generated) | Password-encrypted viewer, deployed to GitHub Pages |
+| `docs/` | yes | Blank questionnaire for collecting data from relatives |
+| `data/` | **no** (private) | `ahnenblatt/` (`.ahn` + CSV export), `exports/` (HTML + PDF reports), `img/` (photos, later), `archive/` |
+| `web/` | **no** (generated) | Viewer with unencrypted data, for private sharing as a zip |
 
-`data/` and `web/` contain personal data of living people and are gitignored.
-`public/` only contains the data encrypted (AES-256-GCM, key from your password via PBKDF2-SHA256, 600k iterations).
+`data/` and `web/` contain personal data of living people and are never committed.
 
-## Build the web viewer
-
-1. In Ahnenblatt: export the tree as CSV to `data/ahnenblatt/2023_05_StammbaumFBeaumont.csv`.
-2. Run `python src/build_web.py` (or pass another CSV path as argument). No dependencies.
-3. Open `web/index.html` in a browser (double-click works).
-
-The viewer loads d3 (pan/zoom) and elkjs (layout) from the jsdelivr CDN, so it needs internet on first load.
-
-## Publish to GitHub Pages (password-protected)
+### Update the website after changing the tree
 
 1. Once: `pip install -r requirements.txt`
-2. `python src/build_web.py --publish` → asks for the password, writes `public/`.
-   Use a long passphrase: the encrypted file is public and can be attacked offline.
-3. Commit and push `public/`. The workflow `.github/workflows/pages.yml` deploys it
-   (it refuses to deploy if `public/` contains unencrypted data).
+2. In Ahnenblatt, export the tree as CSV to `data/ahnenblatt/2023_05_StammbaumFBeaumont.csv`.
+3. Run `python src/build_web.py --publish` and enter the password twice (it is asked for, not typed
+   into the command). This writes `public/`.
+4. Commit and push `public/`. The workflow `.github/workflows/pages.yml` deploys it within about a
+   minute, and refuses to deploy if `public/` contains unencrypted data.
 
-Re-run step 2 after every Ahnenblatt export. Visitors enter the password once per browser tab.
+Use a long passphrase (4+ random words): the encrypted file is public and could be attacked offline.
 
-## How the layout works
+### Private zip version (no password)
 
-- Partners (and chains of multiple marriages) are merged into one block so they always sit side by side.
-- Each couple gets a small "family" dot one layer below; children hang below the dot.
-- ELK's layered algorithm places the blocks to reduce edge crossings.
+`python src/build_web.py` builds `web/` with unencrypted data. Zip the folder and send it;
+the recipient double-clicks `index.html`. Internet is needed on first open (libraries load from a CDN).
+
+### Under the hood
+
+- **Data**: CSV (UTF-16, tab-separated, GEDCOM-style columns) → `people` + `families` JSON.
+- **Encryption**: AES-256-GCM, key derived from the password with PBKDF2-SHA256 (600 000 iterations);
+  decrypted in the browser with the Web Crypto API.
+- **Layout**: partners (and chains of remarriages) are merged into one block so they sit side by side;
+  each couple gets a small family dot, children hang below it. [ELK](https://eclipse.dev/elk/)'s layered
+  algorithm places everything to reduce crossing lines.
+- **Rendering**: SVG with [d3](https://d3js.org/) pan/zoom, a minimap, search, and lineage highlighting.
 - The start person is set via `HOME_GIVEN` / `HOME_SURNAME` in `src/index.html`.

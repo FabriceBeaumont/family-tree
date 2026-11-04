@@ -1,6 +1,7 @@
 # --- Private family data: never commit ---
 /data/
 /web/
+/HANDOFF.md
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
