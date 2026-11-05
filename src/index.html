@@ -122,6 +122,12 @@
 
   /* level of detail when zoomed far out */
   .far .person text { display: none; }
+  /* kinship label under the card (👪 toggle) */
+  .person .rel { display: none; font-size: 11px; font-weight: 600; fill: var(--accent); text-anchor: middle;
+    paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
+  .relations .person .rel { display: inline; }
+  .relations.dimmed .person.related:not(.lit) { opacity: .55; }   /* readable labels on relatives */
+  .far .person .rel { display: none; }
   .far .person rect.card { stroke-width: 0; fill: var(--unknown); }
   .far .person.M rect.card { fill: var(--male); }
   .far .person.F rect.card { fill: var(--female); }
@@ -179,6 +185,7 @@
   .modeBtn[aria-pressed="true"].blood { background: color-mix(in srgb, var(--blood) 35%, var(--card)); border: 2px solid var(--blood); }
   .modeBtn[aria-pressed="true"].tree { background: color-mix(in srgb, var(--tree-bg) 35%, var(--card)); border: 2px solid var(--tree-bg); }
   .modeBtn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+  .modeBtn[aria-pressed="true"].rel { background: color-mix(in srgb, var(--accent) 30%, var(--card)); border: 2px solid var(--accent); }
   /* legend next to the navigation hint */
   #hint { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; right: 16px; }
   #legend { display: contents; }
@@ -327,6 +334,7 @@
   </div>
   <button type="button" class="btn glass modeBtn blood" id="btn-blood" aria-pressed="false"><span aria-hidden="true">🩸</span></button>
   <button type="button" class="btn glass modeBtn tree" id="btn-tree" aria-pressed="false"><span aria-hidden="true">🌳</span></button>
+  <button type="button" class="btn glass modeBtn rel" id="btnRel" aria-pressed="false" data-i18n-attr="title:relHelp;aria-label:relations"><span aria-hidden="true">👪</span></button>
   <button class="btn glass" id="btnPhotos" aria-pressed="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.6"/><circle cx="8" cy="6.4" r="2.2"/><path d="M3.9 12.7c.8-1.8 2.3-2.7 4.1-2.7s3.3.9 4.1 2.7"/></svg><span class="lbl" data-i18n="photos">Fotos</span></button>
 </div>
 
@@ -378,6 +386,8 @@ const TEXT = {
     gensHelp: "Begrenzt die direkte Linie der ausgewählten Person: ↑ wie viele Generationen Vorfahren, ↓ wie viele Generationen Nachkommen. Leer = alle. Mit Fokus werden nur diese Generationen gezeigt.",
     photos: "Fotos", photosHide: "Fotos ausblenden", photosShow: "Fotos einblenden",
     selectFirst: "Zuerst eine Person auswählen.",
+    relations: "Verwandtschaft",
+    relHelp: "Verwandtschaft: zeigt unter jeder Karte, wie die Person mit der ausgewählten Person verwandt ist (Blutsverwandte jeden Grades, Partner und angeheiratete Verwandte). Die Zahl in Klammern zählt die Verbindungen (Eltern-Kind- oder Partner-Schritte).",
     focus: "Fokus", focusSub: "Nur hervorgehobene Personen zeigen und neu anordnen",
     focusHelp: "Blendet alle nicht hervorgehobenen Personen aus und ordnet die übrigen neu an, als wären sie allein im Stammbaum. Berücksichtigt die direkte Linie, Partner und Geschwister sowie eingeschaltete Blutlinie / Gesamter Stammbaum. Ausschalten zeigt wieder alle.",
     toDark: "Dunkles Design", toLight: "Helles Design", otherLang: "Switch to English",
@@ -410,6 +420,8 @@ const TEXT = {
     gensHelp: "Limits the selected person's direct line: ↑ how many generations of ancestors, ↓ how many generations of descendants. Empty = all. With Focus, only these generations are shown.",
     photos: "Photos", photosHide: "Hide photos", photosShow: "Show photos",
     selectFirst: "Select a person first.",
+    relations: "Relationship",
+    relHelp: "Relationship: shows under each card how the person is related to the selected person (blood relatives of any degree, partners and in-laws). The number in brackets counts the links (parent-child or partner steps).",
     focus: "Focus", focusSub: "Show only highlighted people, rearranged",
     focusHelp: "Hides everyone who is not highlighted and rearranges the rest as if they were alone in the family tree. Uses the direct line, partners and siblings, plus Bloodline / Whole family tree when switched on. Turning it off shows everyone again.",
     toDark: "Dark appearance", toLight: "Light appearance", otherLang: "Auf Deutsch umschalten",
@@ -638,6 +650,7 @@ function startViewer(data) {
     personSel.append("text").attr("class", "given").attr("y", 21);
     personSel.append("text").attr("class", "surname").attr("y", 38);
     personSel.append("text").attr("class", "life").attr("y", 55).text(lifeSpan);
+    personSel.append("text").attr("class", "rel").attr("x", W / 2).attr("y", H + 14);
 
     // photo toggle (remembered per browser); text moves right and is clipped shorter next to the avatar
     let showPhotos = true;
@@ -780,6 +793,111 @@ function startViewer(data) {
     };
     const modes = { tree: null, blood: null };   // name -> { root, set } while switched on
     const EMPTY = new Set();
+    // ---------- kinship: how is a person related to the selected one ("ego")? ----------
+    // Blood relatives via the nearest common ancestor: a = generations up from ego, b = down to the person.
+    const KIN = {
+      de: {
+        pick: (sex, m, f, u) => sex === "M" ? m : sex === "F" ? f : u,
+        // up to 3 repetitions written out (Urururgroßvater), more as a multiplier (4× Urgroßvater)
+        ur: (n, base) => n <= 0 ? base : n <= 3 ? "Ur" + "ur".repeat(n - 1) + base.toLowerCase()
+          : `${n}× Ur${base.toLowerCase()}`,
+        grade: n => n >= 2 ? ` ${n}. Grades` : "",
+        name(a, b, sex, half) {
+          const P = (m, f, u) => this.pick(sex, m, f, u);
+          if (a === 0) return b === 1 ? P("Sohn", "Tochter", "Kind") : b === 2 ? P("Enkel", "Enkelin", "Enkelkind")
+            : this.ur(b - 2, P("Enkel", "Enkelin", "Enkelkind"));
+          if (b === 0) return a === 1 ? P("Vater", "Mutter", "Elternteil") : this.ur(a - 2, P("Großvater", "Großmutter", "Großelternteil"));
+          if (a === 1 && b === 1) return (half ? "Halb" : "") + (half ? P("bruder", "schwester", "geschwister") : P("Bruder", "Schwester", "Geschwister"));
+          const nephew = r => r === 1 ? P("Neffe", "Nichte", "Neffe/Nichte") : this.ur(r - 2, P("Großneffe", "Großnichte", "Großneffe/-nichte"));
+          const uncle = r => r === 1 ? P("Onkel", "Tante", "Onkel/Tante") : this.ur(r - 2, P("Großonkel", "Großtante", "Großonkel/-tante"));
+          if (a === b) return P("Cousin", "Cousine", "Cousin/Cousine") + this.grade(a - 1);
+          if (b > a) return nephew(b - a) + this.grade(a);
+          return uncle(a - b) + this.grade(b);
+        },
+        spouse: (sex, unmarried) => unmarried ? (sex === "F" ? "Partnerin" : "Partner") : sex === "M" ? "Ehemann" : sex === "F" ? "Ehefrau" : "Ehepartner",
+        step: { parent: ["Stiefvater", "Stiefmutter", "Stiefelternteil"], childInLaw: ["Schwiegersohn", "Schwiegertochter", "Schwiegerkind"],
+                sibInLaw: ["Schwager", "Schwägerin", "Schwager/Schwägerin"], parentInLaw: ["Schwiegervater", "Schwiegermutter", "Schwiegerelternteil"],
+                stepChild: ["Stiefsohn", "Stieftochter", "Stiefkind"] },
+        byMarriage: w => `${w} (angeheiratet)`,
+      },
+      en: {
+        pick: (sex, m, f, u) => sex === "M" ? m : sex === "F" ? f : u,
+        great: (n, base) => n <= 0 ? base : n <= 3 ? "great-".repeat(n) + base : `${n}× great-${base}`,
+        ord: n => ["", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"][n] || `${n}th`,
+        removed: r => r === 0 ? "" : r === 1 ? " once removed" : r === 2 ? " twice removed" : ` ${r} times removed`,
+        name(a, b, sex, half) {
+          const P = (m, f, u) => this.pick(sex, m, f, u);
+          if (a === 0) return b === 1 ? P("son", "daughter", "child") : this.great(b - 2, P("grandson", "granddaughter", "grandchild"));
+          if (b === 0) return a === 1 ? P("father", "mother", "parent") : this.great(a - 2, P("grandfather", "grandmother", "grandparent"));
+          if (a === 1 && b === 1) return (half ? "half-" : "") + P("brother", "sister", "sibling");
+          if (a === 1) return b === 2 ? P("nephew", "niece", "nephew/niece") : this.great(b - 3, P("grandnephew", "grandniece", "grandnephew/-niece"));
+          if (b === 1) return this.great(a - 2, P("uncle", "aunt", "uncle/aunt"));
+          return `${this.ord(Math.min(a, b) - 1)} cousin${this.removed(Math.abs(a - b))}`;
+        },
+        spouse: (sex, unmarried) => unmarried ? "partner" : sex === "M" ? "husband" : sex === "F" ? "wife" : "spouse",
+        step: { parent: ["stepfather", "stepmother", "stepparent"], childInLaw: ["son-in-law", "daughter-in-law", "child-in-law"],
+                sibInLaw: ["brother-in-law", "sister-in-law", "sibling-in-law"], parentInLaw: ["father-in-law", "mother-in-law", "parent-in-law"],
+                stepChild: ["stepson", "stepdaughter", "stepchild"] },
+        byMarriage: w => `${w} by marriage`,
+      },
+    };
+    const parentsOf = id => { const f = people.get(id).parentFam && fams.get(people.get(id).parentFam); return f ? [f.husband, f.wife].filter(Boolean) : []; };
+    const spousesOf = id => people.get(id).spouseFams.map(fid => { const f = fams.get(fid);
+      return { id: f.husband === id ? f.wife : f.husband, fam: f }; }).filter(x => x.id);
+    function ancestorDepths(id) {                      // id -> generations up (self = 0), shortest path
+      const d = new Map([[id, 0]]), q = [id];
+      while (q.length) { const x = q.shift(); for (const p of parentsOf(x)) if (!d.has(p)) { d.set(p, d.get(x) + 1); q.push(p); } }
+      return d;
+    }
+    let relCache = { key: "", map: new Map() };
+    function relationsFor(ego) {
+      const key = ego + "|" + lang;
+      if (relCache.key === key) return relCache.map;
+      const K = KIN[lang], out = new Map(), blood = new Map();
+      const put = (id, label, links) => out.set(id, `${label} (${links})`);   // links = parent/child/partner steps
+      const up = ancestorDepths(ego), egoParents = new Set(parentsOf(ego));
+      for (const id of people.keys()) {                // blood relatives
+        if (id === ego) continue;
+        let best = null;
+        for (const [anc, b] of ancestorDepths(id)) {
+          const a = up.get(anc);
+          if (a !== undefined && (!best || a + b < best.a + best.b)) best = { a, b };
+        }
+        if (!best) continue;
+        const half = best.a === 1 && best.b === 1 && parentsOf(id).filter(p => egoParents.has(p)).length === 1;
+        blood.set(id, best);
+        put(id, K.name(best.a, best.b, people.get(id).sex, half), best.a + best.b);
+      }
+      const S = (arr, id) => K.pick(people.get(id).sex, ...arr);
+      for (const { id, fam } of spousesOf(ego)) put(id, K.spouse(people.get(id).sex, fam.unmarried), 1);
+      for (const [x, { a, b }] of blood) {             // partners of blood relatives
+        for (const { id: sp } of spousesOf(x)) {
+          if (out.has(sp) || sp === ego) continue;
+          const label = a === 1 && b === 0 ? S(K.step.parent, sp) : a === 0 && b === 1 ? S(K.step.childInLaw, sp)
+            : a === 1 && b === 1 ? S(K.step.sibInLaw, sp) : K.byMarriage(K.name(a, b, people.get(sp).sex, false));
+          put(sp, label, a + b + 1);
+        }
+      }
+      for (const { id: sp } of spousesOf(ego)) {        // the partner's family
+        for (const p of parentsOf(sp)) if (!out.has(p)) put(p, S(K.step.parentInLaw, p), 2);
+        const pf = people.get(sp).parentFam && fams.get(people.get(sp).parentFam);
+        if (pf) for (const c of pf.children) if (c !== sp && !out.has(c)) put(c, S(K.step.sibInLaw, c), 3);
+        for (const fid of people.get(sp).spouseFams) for (const c of fams.get(fid).children)
+          if (!out.has(c) && c !== ego) put(c, S(K.step.stepChild, c), 2);
+      }
+      relCache = { key, map: out };
+      return out;
+    }
+    let relOn = false;
+    function applyRelations() {
+      viewport.classed("relations", relOn && !!selected);
+      const map = relOn && selected ? relationsFor(selected) : new Map();
+      personSel.select(".rel").text(p => map.get(p.id) || "");
+      personSel.classed("related", p => map.has(p.id));
+      document.getElementById("btnRel").setAttribute("aria-pressed", relOn);
+    }
+    document.getElementById("btnRel").onclick = () => { relOn = !relOn; applyRelations(); };
+
     // Generation of every person relative to `ref` (parents -1, children +1, partners 0), by BFS.
     function generationOffsets(ref) {
       const off = new Map([[ref, 0]]), queue = [ref];
@@ -870,6 +988,7 @@ function startViewer(data) {
         modes.blood ? item("blood", t("bloodline"), nameYear(modes.blood.root) + "\n\n" + t("bloodlineHelp")) : "",
         modes.tree ? item("tree", t("familyTree"), nameYear(modes.tree.root) + "\n\n" + t("familyTreeHelp")) : "",
       ].join("");
+      applyRelations();
       if (focusOn) refocus();
     }
 
