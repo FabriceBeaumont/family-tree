@@ -370,21 +370,26 @@ def write(path: Path, rows: list[dict], cols: list[str]) -> None:
         w.writerows(rows)
 
 
+def run(csv_path: Path = DEFAULT_CSV, review_notes: bool = False) -> list[dict[str, str]]:
+    """Clean the export, write the clean copy + logs, return the cleaned rows (used by build_web.py)."""
+    OUT.mkdir(parents=True, exist_ok=True)
+    rows, cols, c = clean(read_rows(csv_path), read_fixes(OUT / "manual_fixes.tsv"),
+                          read_countries(OUT / "place_countries.tsv"), read_tsv(OUT / "new_people.tsv"),
+                          review_notes=review_notes)
+    write(OUT / "family_tree_cleaned.csv", rows, cols)
+    write(OUT / "cleaning_changes.csv", c.changes, ["id", "column", "before", "after", "rule"])
+    write(OUT / "cleaning_review.csv", c.review, ["id", "column", "value", "problem", "suggestion"])
+    print(f"cleaned: {len(rows)} people, {len(c.changes)} automatic changes, {len(c.review)} values to review")
+    return rows
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("csv", nargs="?", type=Path, default=DEFAULT_CSV)
     ap.add_argument("--review-notes", action="store_true",
                     help="also list notes that look like they belong in another field (off: all notes accepted)")
     args = ap.parse_args()
-    OUT.mkdir(parents=True, exist_ok=True)
-    rows, cols, c = clean(read_rows(args.csv), read_fixes(OUT / "manual_fixes.tsv"),
-                          read_countries(OUT / "place_countries.tsv"), read_tsv(OUT / "new_people.tsv"),
-                          review_notes=args.review_notes)
-    write(OUT / "family_tree_cleaned.csv", rows, cols)
-    write(OUT / "cleaning_changes.csv", c.changes, ["id", "column", "before", "after", "rule"])
-    write(OUT / "cleaning_review.csv", c.review, ["id", "column", "value", "problem", "suggestion"])
-    print(f"{len(rows)} people -> {OUT / 'family_tree_cleaned.csv'}: "
-          f"{len(c.changes)} automatic changes, {len(c.review)} values to review")
+    run(args.csv, args.review_notes)
 
 
 if __name__ == "__main__":

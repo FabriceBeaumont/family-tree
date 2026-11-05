@@ -71,7 +71,8 @@ a password and published with GitHub Pages.
 
 `data/` and `web/` contain personal data of living people and are never committed.
 
-**Cleaned data:** `python src/clean_csv.py` writes a normalised copy of the Ahnenblatt export to
+**Cleaned data:** the viewer is built from a cleaned copy: `build_web.py` first runs `clean_csv.py`
+(use `--raw` to skip it). `python src/clean_csv.py` alone writes a normalised copy of the Ahnenblatt export to
 `data/cleaned/family_tree_cleaned.csv` (ISO dates, countries, nicknames, addresses, …) plus a log of
 every change and a list of values that still need a decision. Corrections that are specific to this
 family live in private files next to it (`manual_fixes.tsv`, `place_countries.tsv`, `new_people.tsv`).
