@@ -4,145 +4,492 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
+<script>
+  // Theme: saved choice, else the system setting. Applied before first paint to avoid a flash.
+  (() => {
+    let saved = null; try { saved = localStorage.getItem("stammbaum-theme"); } catch {}
+    const sys = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    document.documentElement.dataset.theme = saved === "dark" || saved === "light" ? saved : sys;
+  })();
+</script>
 <title>Stammbaum Explorer</title>
 <style>
+  /* Design tokens. Light/dark follow the system appearance (HIG: no app-level appearance switch). */
   :root {
-    --bg: #f4f1ea;
-    --grid: #e2ddd0;
-    --card: #fffdf8;
-    --ink: #2b2a27;
-    --muted: #7a756a;
-    --line: #a59e8e;
-    --male: #4f7cac;
-    --female: #c0587e;
-    --unknown: #9a948a;
-    --accent: #d08a1f;
-    --panel: #fffdf8;
-    --shadow: 0 2px 10px rgba(40, 30, 10, .12);
+    color-scheme: light;
+    --bg: #f2f2f7;            /* canvas */
+    --grid: #d9d9df;          /* dot grid on the canvas */
+    --card: #ffffff;          /* person card */
+    --card-stroke: rgba(60, 60, 67, .16);
+    --fill: rgba(118, 118, 128, .12);   /* secondary fills: inputs, chips, hover */
+    --ink: #1d1d1f;           /* primary text, 16.8:1 on card */
+    --muted: #6e6e73;         /* secondary text, 5.0:1 on card */
+    --line: #a1a1a6;          /* family lines */
+    --male: #2f6fd6;
+    --female: #d6336c;
+    --unknown: #8e8e93;
+    --accent: #f08a00;        /* selection + lineage */
+    --blood: #d70015;         /* bloodline mode */
+    --tree-line: #8a5a2b;     /* family-tree mode lines (brown) */
+    --tree-bg: #2e9d4f;       /* family-tree mode card tint (green) */
+    --glass: rgba(255, 255, 255, .78);
+    --glass-stroke: rgba(0, 0, 0, .08);
+    --shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 6px 20px rgba(0, 0, 0, .10);
+    --radius: 12px;
+  }
+  :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0f0f11;
+      --grid: #26262a;
+      --card: #1c1c1e;
+      --card-stroke: rgba(255, 255, 255, .10);
+      --fill: rgba(118, 118, 128, .24);
+      --ink: #f5f5f7;         /* 16.0:1 on card */
+      --muted: #a1a1a6;       /* 6.9:1 on card */
+      --line: #5c5c62;
+      --male: #64a2ff;
+      --female: #ff6b98;
+      --unknown: #8e8e93;
+      --accent: #ff9f0a;
+      --blood: #ff453a;
+      --tree-line: #c08a55;
+      --tree-bg: #30d158;
+      --glass: rgba(36, 36, 40, .72);
+      --glass-stroke: rgba(255, 255, 255, .08);
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .45);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg);
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); }
-  #map { position: fixed; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    color: var(--ink); -webkit-font-smoothing: antialiased; }
+  #map { position: fixed; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: none;
+    background-image: radial-gradient(var(--grid) 1px, transparent 1.4px); background-size: 22px 22px; }
   #map:active { cursor: grabbing; }
 
   .edge { fill: none; stroke: var(--line); stroke-width: 1.4; }
   .fam circle { fill: var(--card); stroke: var(--line); stroke-width: 1.4; }
+  .fam.childless { display: none; }      /* no children: only the partnership line, no dot */
   .fam.unmarried circle { stroke-dasharray: 2 2; }
+  .focus .person:not(.inFocus), .focus .fam:not(.inFocus) { display: none; }
   .person { cursor: pointer; }
-  .person rect.card { fill: var(--card); stroke: #d8d1c0; stroke-width: 1; }
+  .person rect.card { fill: var(--card); stroke: var(--card-stroke); stroke-width: 1; }
   .person rect.stripe { fill: var(--unknown); }
   .person.M rect.stripe { fill: var(--male); }
   .person.F rect.stripe { fill: var(--female); }
+  .person rect.base { fill: var(--card); }
+  .far .person rect.base { display: none; }
   .person:hover rect.card { stroke: var(--accent); stroke-width: 2; }
   .person.selected rect.card { stroke: var(--accent); stroke-width: 3; }
   .person text { pointer-events: none; }
-  .person .given { font-size: 14px; font-weight: 600; fill: var(--ink); }
+  /* avatars: photo, or a pictogram (male / female / diverse) when there is none */
+  .person .avatar { display: none; pointer-events: none; }
+  .photos .person .avatar { display: inline; }
+  .far .person .avatar { display: none; }
+  .avatar .bg { fill: var(--fill); }
+  .avatar use { fill: var(--ink); }
+  .person .given { font-size: 14px; font-weight: 600; fill: var(--ink); letter-spacing: -.01em; }
   .person .surname { font-size: 12.5px; fill: var(--ink); }
-  .person .life { font-size: 11.5px; fill: var(--muted); }
+  .person .life { font-size: 11.5px; fill: var(--muted); font-variant-numeric: tabular-nums; }
 
   /* lineage highlight */
-  .dimmed .person:not(.hl), .dimmed .fam:not(.hl) { opacity: .18; }
-  .dimmed .edge:not(.hl) { opacity: .12; }
+  .dimmed .person:not(.lit), .dimmed .fam:not(.lit) { opacity: .16; }
+  .dimmed .edge:not(.lit) { opacity: .1; }
+  /* highlight modes (tree < bloodline). Selection lineage (accent) is drawn on top of them. */
+  .person.tree rect.card { fill: url(#gTree); }
+  .edge.tree { stroke: var(--tree-line); stroke-width: 2.4; }
+  .fam.tree circle { stroke: var(--tree-line); }
+  #gTree .a { stop-color: var(--tree-bg); stop-opacity: .30; }
+  #gTree .b { stop-color: var(--tree-bg); stop-opacity: 0; }
+  .person.blood rect.card { fill: url(#gBlood); }
+  .edge.blood { stroke: var(--blood); stroke-width: 2.4; }
+  .fam.blood circle { stroke: var(--blood); }
+  #gBlood .a { stop-color: var(--blood); stop-opacity: .30; }
+  #gBlood .b { stop-color: var(--blood); stop-opacity: 0; }
   .dimmed .edge.hl { stroke: var(--accent); stroke-width: 2.4; }
+  /* secondary highlights of the selected person: partners (by sex colour), siblings (30 % accent) */
+  .person.spouse rect.card { stroke-width: 2.5; stroke: var(--unknown); }
+  .person.spouse.M rect.card { stroke: var(--male); }
+  .person.spouse.F rect.card { stroke: var(--female); }
+  .dimmed .edge.spouse-M, .dimmed .edge.spouse-F, .dimmed .edge.spouse-U { stroke-width: 2.4; opacity: 1; }
+  .dimmed .edge.spouse-M { stroke: var(--male); }
+  .dimmed .edge.spouse-F { stroke: var(--female); }
+  .dimmed .edge.spouse-U { stroke: var(--unknown); }
+  .dimmed .person.spouse { opacity: 1; }
+  .dimmed .person.sib:not(.lit) { opacity: .6; }
+  .person.sib rect.card { stroke: color-mix(in srgb, var(--accent) 30%, var(--card-stroke)); stroke-width: 2; }
+  .dimmed .edge.sib { stroke: color-mix(in srgb, var(--accent) 30%, var(--line)); stroke-width: 2; opacity: 1; }
+  .dimmed .fam.sibfam { opacity: 1; }
 
   /* level of detail when zoomed far out */
   .far .person text { display: none; }
+  /* kinship label under the card (👪 toggle) */
+  .person .rel { display: none; font-size: 11px; font-weight: 600; fill: var(--accent); text-anchor: middle;
+    paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
+  .relations .person .rel { display: inline; }
+  .relations.dimmed .person.related:not(.lit) { opacity: .55; }   /* readable labels on relatives */
+  .far .person .rel { display: none; }
   .far .person rect.card { stroke-width: 0; fill: var(--unknown); }
   .far .person.M rect.card { fill: var(--male); }
   .far .person.F rect.card { fill: var(--female); }
+  .far .person.tree rect.card { fill: var(--tree-bg); }
+  .far .person.blood rect.card { fill: var(--blood); }
   .far .person.selected rect.card { fill: var(--accent); }
   .edge, .fam circle { vector-effect: non-scaling-stroke; }
+
+  /* floating controls: translucent material only on the functional layer, never on content */
+  .glass { background: var(--glass); border: 1px solid var(--glass-stroke); box-shadow: var(--shadow);
+    -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); }
+  @media (prefers-reduced-transparency: reduce) {
+    .glass { background: var(--card); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  }
 
   #topbar { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; gap: 8px;
     align-items: flex-start; pointer-events: none; }
   #topbar > * { pointer-events: auto; }
-  #searchBox { position: relative; width: min(360px, 100%); }
-  #search { width: 100%; padding: 10px 14px; font-size: 15px; border: 1px solid #d8d1c0;
-    border-radius: 10px; background: var(--panel); box-shadow: var(--shadow); color: var(--ink); }
-  #results { list-style: none; margin: 4px 0 0; padding: 4px; background: var(--panel);
-    border-radius: 10px; box-shadow: var(--shadow); max-height: 50vh; overflow: auto; display: none; }
+  #searchBox { position: relative; width: min(360px, 100%); min-width: min(220px, 100%); flex: 0 1 360px; }
+  #topbar { flex-wrap: wrap; }
+  #search { width: 100%; height: 40px; padding: 0 14px 0 36px; font: inherit; font-size: 15px;
+    border-radius: var(--radius); color: var(--ink); outline: none;
+    background: var(--glass) no-repeat 12px 50% / 16px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%238e8e93' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='M11 11l3.5 3.5'/%3E%3C/svg%3E"); }
+  #search:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent), var(--shadow); }
+  #results { list-style: none; margin: 6px 0 0; padding: 6px; border-radius: var(--radius);
+    max-height: 50vh; overflow: auto; display: none; }
   #results.open { display: block; }
-  #results li { padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 14px; }
-  #results li:hover, #results li.active { background: #f1e8d6; }
+  #results li { padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+  #results li:hover, #results li.active { background: var(--fill); }
   #results small { color: var(--muted); margin-left: 6px; }
-  .btn { padding: 9px 12px; font-size: 14px; border: 1px solid #d8d1c0; border-radius: 10px;
-    background: var(--panel); box-shadow: var(--shadow); cursor: pointer; color: var(--ink); white-space: nowrap; }
-  .btn:hover { border-color: var(--accent); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px; font: inherit;
+    font-size: 14px; font-weight: 500; border-radius: var(--radius); cursor: pointer; color: var(--ink); white-space: nowrap; }
+  .btn svg { width: 16px; height: 16px; flex: none; }
+  /* generation limits: two tiny number fields, empty = all */
+  .gens { display: inline-flex; align-items: center; height: 40px; padding: 0 6px; gap: 2px; border-radius: var(--radius); }
+  .gens label { display: inline-flex; align-items: center; gap: 1px; color: var(--muted); font-size: 13px; font-weight: 600; cursor: text; }
+  .gens input { width: 30px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: var(--ink);
+    font: inherit; font-size: 14px; text-align: center; padding: 0; -moz-appearance: textfield; appearance: textfield; }
+  .gens input::-webkit-outer-spin-button, .gens input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .gens input::placeholder { color: var(--muted); }
+  .gens input:hover, .gens input:focus { background: var(--fill); outline: none; }
+  .gens input:focus-visible { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent); }
+  .gens input:not(:placeholder-shown) { color: var(--accent); font-weight: 700; }
+  .gens .sep { width: 1px; height: 22px; background: var(--glass-stroke); margin: 0 4px; }
+  #btnFocus { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 8px; border: 0; border-radius: 8px;
+    background: transparent; color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  #btnFocus svg { width: 15px; height: 15px; }
+  #btnFocus:hover { background: var(--fill); }
+  #btnFocus[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  #btnFocus:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 60%, transparent); }
+  /* bloodline / whole-tree toggles: emoji buttons like the theme button, coloured when on */
+  .iconBtn { width: 40px; padding: 0; justify-content: center; }
+  .modeBtn { width: 40px; padding: 0; justify-content: center; font-size: 18px; }
+  /* tinted, not solid: a red drop on solid red would vanish */
+  .modeBtn[aria-pressed="true"].blood { background: color-mix(in srgb, var(--blood) 35%, var(--card)); border: 2px solid var(--blood); }
+  .modeBtn[aria-pressed="true"].tree { background: color-mix(in srgb, var(--tree-bg) 35%, var(--card)); border: 2px solid var(--tree-bg); }
+  .modeBtn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+  .modeBtn[aria-pressed="true"].rel { background: color-mix(in srgb, var(--accent) 30%, var(--card)); border: 2px solid var(--accent); }
+  /* legend next to the navigation hint */
+  #hint { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; right: 16px; }
+  #legend { display: contents; }
+  #legend .item { display: inline-flex; align-items: center; gap: 6px; cursor: help; }
+  #legend .swatch { transform: none; }
+  .btn:hover { background: color-mix(in srgb, var(--glass) 85%, var(--accent)); }
+  .btn[aria-pressed="true"] { color: var(--accent); }
+  .btn:focus-visible, .chip:focus-visible, .toggle:focus-visible, #panel .close:focus-visible, #panelTab:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 2px; }
+  @media (max-width: 560px) { .btn .lbl { display: none; } .btn { padding: 0 12px; } }
 
-  #panel { position: fixed; top: 64px; right: 12px; bottom: 12px; width: 340px; background: var(--panel);
-    border-radius: 14px; box-shadow: var(--shadow); padding: 18px 18px 22px; overflow: auto;
-    transform: translateX(calc(100% + 24px)); transition: transform .25s ease; }
+  #panel { position: fixed; top: 64px; right: 12px; bottom: 12px; width: 340px;
+    border-radius: 16px; padding: 20px 20px 24px; overflow: auto;
+    transform: translateX(calc(100% + 24px)); transition: transform .3s cubic-bezier(.2, .8, .2, 1); }
   #panel.open { transform: none; }
-  #panel h2 { margin: 0 28px 2px 0; font-size: 20px; line-height: 1.25; }
-  #panel .sub { color: var(--muted); font-size: 14px; margin-bottom: 14px; }
-  #panel .close { position: absolute; top: 12px; right: 12px; border: 0; background: none;
-    font-size: 22px; cursor: pointer; color: var(--muted); }
-  #panel dl { display: grid; grid-template-columns: 96px 1fr; gap: 6px 10px; margin: 0 0 14px; font-size: 14px; }
+  #panel:focus { outline: none; }
+  #panel h2 { margin: 0 72px 2px 0; font-size: 22px; line-height: 1.2; font-weight: 700; letter-spacing: -.02em; }
+  #panel .sub { color: var(--muted); font-size: 14px; margin-bottom: 14px; font-variant-numeric: tabular-nums; }
+  #panel .sub .gen { cursor: help; }
+  #panel .close { position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border: 0; border-radius: 50%;
+    background: var(--fill); font-size: 18px; line-height: 1; cursor: pointer; color: var(--muted); }
+  #panel .close.collapse { right: 50px; font-size: 20px; }
+  /* collapsed panel: a slim tab on the right edge (desktop) / a bar at the bottom (phone) */
+  #panelTab { position: fixed; right: 12px; top: 64px; width: 44px; max-height: calc(100vh - 88px); padding: 12px 0;
+    border-radius: 14px; display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer;
+    font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); }
+  #panelTab[hidden] { display: none; }
+  #panelTab .chev { font-size: 20px; line-height: 1; color: var(--muted); }
+  #panelTab .grab { display: none; }
+  #panelTab .name { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; max-height: 260px; }
+  #panelTab:hover { background: color-mix(in srgb, var(--glass) 85%, var(--accent)); }
+  #panel dl { display: grid; grid-template-columns: 88px 1fr; gap: 8px 12px; margin: 0 0 14px; font-size: 14px;
+    background: var(--fill); border-radius: var(--radius); padding: 12px 14px; }
   #panel dt { color: var(--muted); }
   #panel dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-  #panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 16px 0 6px; }
+  #panel h3 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 18px 0 8px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip { border: 1px solid #d8d1c0; background: #fff; border-radius: 999px; padding: 4px 10px;
-    font-size: 13px; cursor: pointer; color: var(--ink); }
-  .chip.M { border-left: 4px solid var(--male); }
-  .chip.F { border-left: 4px solid var(--female); }
-  .chip:hover { border-color: var(--accent); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; border: 0; background: var(--fill); border-radius: 999px;
+    padding: 6px 12px 6px 10px; min-height: 32px; font: inherit; font-size: 13px; cursor: pointer; color: var(--ink); }
+  .chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--unknown); flex: none; }
+  .chip.M::before { background: var(--male); }
+  .chip.F::before { background: var(--female); }
+  .chip:hover { background: color-mix(in srgb, var(--fill), var(--accent) 18%); }
   .chip small { color: var(--muted); }
 
-  #minimap { position: fixed; left: 12px; bottom: 12px; width: 220px; height: 150px; background: rgba(255,253,248,.92);
-    border-radius: 10px; box-shadow: var(--shadow); cursor: crosshair; }
-  #hint { position: fixed; left: 244px; bottom: 16px; font-size: 12px; color: var(--muted); }
-  #loading { position: fixed; inset: 0; display: grid; place-items: center; font-size: 18px; color: var(--muted); }
+  #minimap { position: fixed; left: 12px; bottom: 12px; width: 220px; height: 150px;
+    border-radius: var(--radius); cursor: crosshair; }
+  #hint { position: fixed; left: 244px; bottom: 16px; font-size: 12px; color: var(--muted); pointer-events: none; }
+  #hint #legend .item { pointer-events: auto; }
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; font-size: 17px; color: var(--muted); }
   #loading[hidden], #lock[hidden] { display: none; }
   #lock { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: var(--bg); padding: 16px; }
-  #lockForm { width: min(340px, 100%); background: var(--panel); border-radius: 14px; box-shadow: var(--shadow);
-    padding: 24px; display: grid; gap: 12px; }
-  #lockForm h1 { margin: 0; font-size: 22px; }
+  #lockForm { width: min(340px, 100%); background: var(--card); border-radius: 18px; box-shadow: var(--shadow);
+    padding: 28px 24px 24px; display: grid; gap: 12px; }
+  #lockForm h1 { margin: 0; font-size: 24px; letter-spacing: -.02em; }
   #lockForm p { margin: 0; color: var(--muted); font-size: 14px; }
-  #lockPw { padding: 10px 14px; font-size: 15px; border: 1px solid #d8d1c0; border-radius: 10px; background: #fff; color: var(--ink); }
-  #lockMsg { min-height: 1.2em; font-size: 14px; color: var(--female); }
+  #lockPw { height: 44px; padding: 0 14px; font: inherit; font-size: 16px; border: 0; border-radius: var(--radius);
+    background: var(--fill); color: var(--ink); }
+  #lockForm .btn { justify-content: center; height: 44px; background: var(--accent); color: #fff; border: 0; font-weight: 600; }
+  #lockMsg { min-height: 1.2em; font-size: 14px; color: var(--blood); }
 
+  /* theme + language: each button shows the option you would switch TO; also on the lock screen */
+  #prefs { position: fixed; top: 12px; right: 12px; z-index: 11; display: flex; gap: 8px; }
+  #prefs .btn { width: 40px; padding: 0; justify-content: center; font-size: 13px; font-weight: 600; }
+  #prefs .btn svg { width: 18px; height: 18px; }
+  #topbar { right: 108px; }
+  .toggles { display: grid; gap: 8px; }
+  .toggle { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; cursor: pointer;
+    background: var(--fill); color: var(--ink); border-radius: var(--radius); padding: 10px 12px; font: inherit; font-size: 14px; }
+  .toggle .sw { flex: none; width: 36px; height: 22px; border-radius: 11px; background: color-mix(in srgb, var(--muted) 45%, transparent);
+    position: relative; transition: background .2s; }
+  .toggle .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .2s; }
+  .toggle[aria-pressed="true"] .sw::after { transform: translateX(14px); }
+  .toggle.blood[aria-pressed="true"] .sw { background: var(--blood); }
+  .toggle.tree[aria-pressed="true"] .sw { background: var(--tree-bg); }
+  .toggle.focus[aria-pressed="true"] .sw { background: var(--accent); }
+  .toggle .txt { display: grid; gap: 1px; min-width: 0; }
+  .toggle small { color: var(--muted); font-size: 12px; line-height: 1.35; }
+  /* legend: as quiet as the navigation hint */
+  .legend { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+  .legend li { display: flex; align-items: baseline; gap: 8px; cursor: help; line-height: 1.35; }
+  .legend b { font-weight: 600; }
+  .swatch { flex: none; width: 18px; height: 3px; border-radius: 2px; background: var(--accent); transform: translateY(-3px); }
+  .swatch.spouse { background: linear-gradient(90deg, var(--male) 50%, var(--female) 50%); }
+  .swatch.sib { background: color-mix(in srgb, var(--accent) 30%, var(--line)); }
+  .swatch.blood { background: var(--blood); }
+  .swatch.tree { background: var(--tree-line); }
+  /* collapsible highlight settings */
+  details.more { margin-top: 14px; }
+  details.more summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; color: var(--muted); padding: 6px 0; }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary::before { content: "›"; display: inline-block; width: 12px; font-size: 16px; transition: transform .2s; }
+  details.more[open] summary::before { transform: rotate(90deg); }
+  details.more summary:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 60%, transparent); border-radius: 6px; }
+  details.more .toggles { margin-top: 6px; }
+  @media (prefers-reduced-motion: reduce) { .toggle .sw, .toggle .sw::after { transition: none; } }
+
+  @media (prefers-reduced-motion: reduce) { #panel { transition: none; } }
   @media (max-width: 700px) {
     #panel { top: auto; left: 8px; right: 8px; width: auto; height: 55vh; bottom: 8px;
       transform: translateY(calc(100% + 16px)); }
+    #panel .close.collapse { transform: rotate(90deg); }
+    #panelTab { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: 56px; max-height: none;
+      flex-direction: column; justify-content: center; gap: 6px; padding: 6px 16px 10px; }
+    #panelTab .grab { display: block; width: 36px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--muted) 50%, transparent); }
+    #panelTab .chev { display: none; }
+    #panelTab .name { writing-mode: horizontal-tb; transform: none; max-height: none; max-width: 100%; }
     #minimap, #hint { display: none; }
-    #topbar { left: 8px; right: 8px; }
+    #topbar { left: 8px; right: 104px; }
+    #prefs { right: 8px; }
   }
 </style>
 </head>
 <body>
-<svg id="map"><g id="viewport"><g id="edges"></g><g id="fams"></g><g id="people"></g></g></svg>
-<div id="loading">Layout wird berechnet…</div>
+<svg id="map"><defs>
+  <clipPath id="avatarClip"><circle cx="34" cy="32" r="20"/></clipPath>
+  <symbol id="pic-U" viewBox="0 0 40 40"><circle cx="20" cy="15" r="7.5"/><path d="M5 40c0-10 6.5-15.5 15-15.5S35 30 35 40z"/></symbol>
+  <symbol id="pic-M" viewBox="0 0 40 40"><circle cx="20" cy="15.5" r="7.5"/><path d="M12.2 14.5c0-6 3.6-8.6 7.8-8.6s7.8 2.6 7.8 8.6c-1.4-2.6-4.4-3.6-7.8-3.6s-6.4 1-7.8 3.6z"/><path d="M3 40c0-10 7-15 17-15s17 5 17 15z"/></symbol>
+  <symbol id="pic-F" viewBox="0 0 40 40"><path d="M20 6.5c-5.6 0-9 4-9 9.5 0 4.4-.8 8-2.6 10.6 2.6 1 5.2 1.2 7.4.8L20 26l4.2 1.4c2.2.4 4.8.2 7.4-.8-1.8-2.6-2.6-6.2-2.6-10.6 0-5.5-3.4-9.5-9-9.5z"/><path d="M7 40c0-9 5.6-13.5 13-13.5S33 31 33 40z"/></symbol>
+<linearGradient id="gBlood"><stop class="a" offset="0"/><stop class="b" offset="1"/></linearGradient><linearGradient id="gTree"><stop class="a" offset="0"/><stop class="b" offset="1"/></linearGradient></defs><g id="viewport"><g id="edges"></g><g id="fams"></g><g id="people"></g></g></svg>
+<div id="loading" data-i18n="loading">Layout wird berechnet…</div>
 <div id="lock" hidden>
   <form id="lockForm">
-    <h1>Stammbaum</h1>
-    <p>Dieser Stammbaum ist passwortgeschützt.</p>
-    <input id="lockPw" type="password" placeholder="Passwort" autocomplete="current-password" required>
-    <button class="btn" type="submit">Öffnen</button>
+    <h1 data-i18n="lockTitle">Stammbaum</h1>
+    <p data-i18n="lockText">Dieser Stammbaum ist passwortgeschützt.</p>
+    <input id="lockPw" type="password" placeholder="Passwort" data-i18n-attr="placeholder:password" autocomplete="current-password" required>
+    <button class="btn" type="submit" data-i18n="open">Öffnen</button>
     <div id="lockMsg" role="status"></div>
   </form>
 </div>
 
 <div id="topbar">
   <div id="searchBox">
-    <input id="search" type="search" placeholder="Person suchen…" autocomplete="off">
-    <ul id="results"></ul>
+    <input id="search" class="glass" type="search" placeholder="Person suchen…" data-i18n-attr="placeholder:search;aria-label:search" autocomplete="off">
+    <ul id="results" class="glass"></ul>
   </div>
-  <button class="btn" id="btnHome" title="Zur Startperson">⌂ Start</button>
-  <button class="btn" id="btnFit" title="Gesamten Baum zeigen">⤢ Alles</button>
+  <button class="btn glass iconBtn" id="btnFit" title="Gesamten Baum zeigen" aria-label="Gesamten Baum zeigen" data-i18n-attr="title:fitTitle;aria-label:fitTitle"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg></button>
+  <div class="gens glass" role="group" data-i18n-attr="title:gensHelp;aria-label:gens">
+    <label><span aria-hidden="true">↑</span><input id="genUp" type="number" min="0" max="99" inputmode="numeric" placeholder="∞" data-i18n-attr="aria-label:genUp"></label>
+    <label><span aria-hidden="true">↓</span><input id="genDown" type="number" min="0" max="99" inputmode="numeric" placeholder="∞" data-i18n-attr="aria-label:genDown"></label>
+    <span class="sep" aria-hidden="true"></span>
+    <button type="button" id="btnFocus" aria-pressed="false" data-i18n-attr="title:focusHelp"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="5.6"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg><span data-i18n="focus">Fokus</span></button>
+  </div>
+  <button type="button" class="btn glass modeBtn blood" id="btn-blood" aria-pressed="false"><span aria-hidden="true">🩸</span></button>
+  <button type="button" class="btn glass modeBtn tree" id="btn-tree" aria-pressed="false"><span aria-hidden="true">🌳</span></button>
+  <button type="button" class="btn glass modeBtn rel" id="btnRel" aria-pressed="false" data-i18n-attr="title:relHelp;aria-label:relations"><span aria-hidden="true">👪</span></button>
+  <button class="btn glass" id="btnPhotos" aria-pressed="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.6"/><circle cx="8" cy="6.4" r="2.2"/><path d="M3.9 12.7c.8-1.8 2.3-2.7 4.1-2.7s3.3.9 4.1 2.7"/></svg><span class="lbl" data-i18n="photos">Fotos</span></button>
 </div>
 
-<aside id="panel"><button class="close" id="panelClose" aria-label="Schließen">×</button><div id="panelBody"></div></aside>
-<canvas id="minimap"></canvas>
-<div id="hint">Ziehen = verschieben · Mausrad = zoomen · Klick = Details &amp; Linie</div>
+<aside id="panel" class="glass" tabindex="-1" aria-label="Details" data-i18n-attr="aria-label:details"><button class="close collapse" id="panelCollapse" aria-label="Einklappen" data-i18n-attr="aria-label:collapse;title:collapse">›</button><button class="close" id="panelClose" aria-label="Schließen" data-i18n-attr="aria-label:close;title:close">×</button><div id="panelBody"></div></aside>
+<button id="panelTab" class="glass" type="button" hidden><span class="grab" aria-hidden="true"></span><span class="chev" aria-hidden="true">‹</span><span class="name"></span></button>
+<canvas id="minimap" class="glass" aria-label="Übersichtskarte" data-i18n-attr="aria-label:minimap"></canvas>
+<div id="hint"><span data-i18n="hint">Ziehen = verschieben · Mausrad = zoomen · Klick = Details &amp; Linie</span><span id="legend"></span></div>
+<div id="prefs">
+  <button type="button" class="btn glass" id="btnTheme"></button>
+  <button type="button" class="btn glass" id="btnLang"></button>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/elkjs@0.9.3/lib/elk.bundled.js"></script>
 <script src="data.enc.js"></script>
 <script>
+// ---------- texts: every UI label lives here (data values such as places/notes stay as entered) ----------
+// ---------- generations by birth year: the ONE place to edit names and year ranges ----------
+// Common (Pew Research) boundaries. Birth years outside every range get no generation label.
+const GENERATIONS = [
+  { from: 1883, to: 1900, de: "Lost Generation",       en: "Lost Generation" },
+  { from: 1901, to: 1927, de: "Kriegsgeneration",   en: "Greatest Generation" },
+  { from: 1928, to: 1945, de: "Stille Generation",     en: "Silent Generation" },
+  { from: 1946, to: 1964, de: "Babyboomer",            en: "Baby Boomers" },
+  { from: 1965, to: 1980, de: "Generation X",          en: "Generation X" },
+  { from: 1981, to: 1996, de: "Millennials (Gen Y)",   en: "Millennials (Gen Y)" },
+  { from: 1997, to: 2012, de: "Generation Z",          en: "Generation Z" },
+  { from: 2013, to: 2024, de: "Generation Alpha",      en: "Generation Alpha" },
+  { from: 2025, to: 2039, de: "Generation Beta",       en: "Generation Beta" },
+];
+const generationOf = year => year ? GENERATIONS.find(g => year >= g.from && year <= g.to) || null : null;
+
+const TEXT = {
+  de: {
+    title: "Stammbaum Explorer", loading: "Layout wird berechnet…", layoutError: "Layout-Fehler: ",
+    noData: "Keine Daten gefunden – bitte python src/build_web.py ausführen.",
+    lockTitle: "Stammbaum", lockText: "Dieser Stammbaum ist passwortgeschützt.", password: "Passwort",
+    open: "Öffnen", decrypting: "Entschlüsseln…", wrongPassword: "Falsches Passwort.",
+    search: "Person suchen…", fit: "Alles", fitTitle: "Gesamten Baum zeigen",
+    details: "Details", close: "Auswahl aufheben", collapse: "Einklappen", expand: "Details zu {name} öffnen", minimap: "Übersichtskarte",
+    hint: "Ziehen = verschieben · Mausrad = zoomen · Klick = Details & Linie",
+    unknown: "Unbekannt", in: " in ",
+    callName: "Rufname", born: "Geboren", christened: "Getauft", died: "Gestorben", buried: "Begraben",
+    occupation: "Beruf", religion: "Religion", note: "Notiz",
+    parents: "Eltern", partners: "Partner", children: "Kinder", siblings: "Geschwister",
+    highlight: "Hervorheben", turnOff: "ausschalten",
+    generationRange: "Geburtsjahrgänge {from}–{to}",
+    gens: "Generationen", genUp: "Generationen nach oben (Vorfahren), leer = alle", genDown: "Generationen nach unten (Nachkommen), leer = alle",
+    gensHelp: "Begrenzt die direkte Linie der ausgewählten Person: ↑ wie viele Generationen Vorfahren, ↓ wie viele Generationen Nachkommen. Leer = alle. Mit Fokus werden nur diese Generationen gezeigt.",
+    photos: "Fotos", photosHide: "Fotos ausblenden", photosShow: "Fotos einblenden",
+    selectFirst: "Zuerst eine Person auswählen.",
+    relations: "Verwandtschaft",
+    relHelp: "Verwandtschaft: zeigt unter jeder Karte, wie die Person mit der ausgewählten Person verwandt ist (Blutsverwandte jeden Grades, Partner und angeheiratete Verwandte). Die Zahl in Klammern zählt die Verbindungen (Eltern-Kind- oder Partner-Schritte).",
+    focus: "Fokus", focusSub: "Nur hervorgehobene Personen zeigen und neu anordnen",
+    focusHelp: "Blendet alle nicht hervorgehobenen Personen aus und ordnet die übrigen neu an, als wären sie allein im Stammbaum. Berücksichtigt die direkte Linie, Partner und Geschwister sowie eingeschaltete Blutlinie / Gesamter Stammbaum. Ausschalten zeigt wieder alle.",
+    toDark: "Dunkles Design", toLight: "Helles Design", otherLang: "Switch to English",
+    directLine: "Direkte Linie", directLineSub: "Vorfahren und Nachkommen von {name}",
+    directLineHelp: "Immer aktiv, solange eine Person ausgewählt ist (orange): ihre Eltern, Großeltern usw. bis zum ältesten bekannten Vorfahren, sowie ihre Kinder, Enkel usw. Geschwister, Partner und angeheiratete Verwandte gehören nicht dazu.",
+    spouseLegend: "Partner", spouseLegendSub: "Rahmen und Ehelinie in Blau (Mann) bzw. Rot (Frau)",
+    spouseLegendHelp: "Alle Partner der ausgewählten Person (Ehe oder Partnerschaft). Die Farbe zeigt das Geschlecht des Partners. Ihre eigenen Vorfahren werden nicht hervorgehoben.",
+    sibLegend: "Geschwister", sibLegendSub: "Abgeschwächt (30 % der Linienfarbe)",
+    sibLegendHelp: "Kinder desselben Elternpaares wie die ausgewählte Person. Halbgeschwister aus anderen Ehen eines Elternteils gehören nicht dazu.",
+    bloodline: "Blutlinie", bloodlineSub: "Nachkommen des am weitesten zurückliegenden Vorfahren ({name})",
+    bloodlineHelp: "Ausgehend von der ausgewählten Person wird der Vorfahre gesucht, der die meisten Generationen zurückliegt (bei Gleichstand: frühestes Geburtsjahr). Hervorgehoben werden dieser Vorfahre und alle seine Nachkommen. Eingeheiratete Partner zählen nicht dazu.",
+    familyTree: "Gesamter Stammbaum", familyTreeSub: "Blutlinie plus alle Vorfahren ihrer Mitglieder ({name})",
+    familyTreeHelp: "Wie die Blutlinie (der am weitesten zurückliegende Vorfahre und alle seine Nachkommen), zusätzlich mit allen Vorfahren dieser Personen – also auch eingeheiratete Partner mit Kindern in der Linie und deren Eltern, Großeltern usw. Kinderlose Partner zählen nicht dazu.",
+  },
+  en: {
+    title: "Family Tree Explorer", loading: "Calculating layout…", layoutError: "Layout error: ",
+    noData: "No data found – please run python src/build_web.py.",
+    lockTitle: "Family tree", lockText: "This family tree is password-protected.", password: "Password",
+    open: "Open", decrypting: "Decrypting…", wrongPassword: "Wrong password.",
+    search: "Search for a person…", fit: "All", fitTitle: "Show the whole tree",
+    details: "Details", close: "Clear selection", collapse: "Collapse", expand: "Open details for {name}", minimap: "Overview map",
+    hint: "Drag = move · Scroll = zoom · Click = details & lineage",
+    unknown: "Unknown", in: " in ",
+    callName: "Called", born: "Born", christened: "Christened", died: "Died", buried: "Buried",
+    occupation: "Occupation", religion: "Religion", note: "Note",
+    parents: "Parents", partners: "Partners", children: "Children", siblings: "Siblings",
+    highlight: "Highlight", turnOff: "turn off",
+    generationRange: "Born {from}–{to}",
+    gens: "Generations", genUp: "Generations up (ancestors), empty = all", genDown: "Generations down (descendants), empty = all",
+    gensHelp: "Limits the selected person's direct line: ↑ how many generations of ancestors, ↓ how many generations of descendants. Empty = all. With Focus, only these generations are shown.",
+    photos: "Photos", photosHide: "Hide photos", photosShow: "Show photos",
+    selectFirst: "Select a person first.",
+    relations: "Relationship",
+    relHelp: "Relationship: shows under each card how the person is related to the selected person (blood relatives of any degree, partners and in-laws). The number in brackets counts the links (parent-child or partner steps).",
+    focus: "Focus", focusSub: "Show only highlighted people, rearranged",
+    focusHelp: "Hides everyone who is not highlighted and rearranges the rest as if they were alone in the family tree. Uses the direct line, partners and siblings, plus Bloodline / Whole family tree when switched on. Turning it off shows everyone again.",
+    toDark: "Dark appearance", toLight: "Light appearance", otherLang: "Auf Deutsch umschalten",
+    directLine: "Direct line", directLineSub: "Ancestors and descendants of {name}",
+    directLineHelp: "Always on while a person is selected (orange): their parents, grandparents and so on up to the oldest known ancestor, plus their children, grandchildren and so on. Siblings, partners and in-laws are not included.",
+    spouseLegend: "Partners", spouseLegendSub: "Frame and marriage line in blue (male) or red (female)",
+    spouseLegendHelp: "Every partner of the selected person (marriage or partnership). The colour shows the partner's sex. Their own ancestors are not highlighted.",
+    sibLegend: "Siblings", sibLegendSub: "Softened (30 % of the line colour)",
+    sibLegendHelp: "Children of the same pair of parents as the selected person. Half-siblings from a parent's other marriages are not included.",
+    bloodline: "Bloodline", bloodlineSub: "Descendants of the furthest ancestor ({name})",
+    bloodlineHelp: "Starting from the selected person, finds the ancestor the most generations back (if tied: earliest birth year). Highlights that ancestor and all of their descendants. Partners who married in are not included.",
+    familyTree: "Whole family tree", familyTreeSub: "Bloodline plus all ancestors of its members ({name})",
+    familyTreeHelp: "Like the bloodline (the furthest ancestor and all of their descendants), plus every ancestor of those people – so partners who married in and had children in the line are included, with their parents, grandparents and so on. Childless partners are not included.",
+  },
+};
+const LANG_KEY = "stammbaum-lang";
+let lang = (() => {
+  const q = new URLSearchParams(location.search).get("lang");
+  if (q in TEXT) return q;
+  try { const s = localStorage.getItem(LANG_KEY); if (s in TEXT) return s; } catch {}
+  return (navigator.language || "de").toLowerCase().startsWith("en") ? "en" : "de";
+})();
+const t = key => TEXT[lang][key] ?? TEXT.de[key] ?? key;
+const langListeners = [];   // re-render hooks (e.g. the open detail panel)
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.title = t("title");
+  for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
+  for (const el of document.querySelectorAll("[data-i18n-attr]"))
+    for (const pair of el.dataset.i18nAttr.split(";")) { const [attr, key] = pair.split(":"); el.setAttribute(attr, t(key)); }
+  const other = lang === "de" ? "en" : "de", bl = document.getElementById("btnLang");
+  bl.textContent = other.toUpperCase(); bl.lang = other; bl.title = bl.ariaLabel = TEXT[other].otherLang ? t("otherLang") : other;
+  applyThemeButton();
+  langListeners.forEach(fn => fn());
+}
+function setLang(l) {
+  if (!(l in TEXT) || l === lang) return;
+  lang = l;
+  try { localStorage.setItem(LANG_KEY, l); } catch {}
+  const u = new URL(location.href); u.searchParams.set("lang", l); history.replaceState(null, "", u);
+  applyLang();
+}
+document.getElementById("btnLang").onclick = () => setLang(lang === "de" ? "en" : "de");
+
+// ---------- theme ----------
+const ICON_MOON = '<svg viewBox="0 0 18 18" fill="currentColor" aria-hidden="true"><path d="M15.2 11.3A6.6 6.6 0 0 1 6.7 2.8a.5.5 0 0 0-.7-.6 7.4 7.4 0 1 0 9.8 9.8.5.5 0 0 0-.6-.7z"/></svg>';
+const ICON_SUN = '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="3.4" fill="currentColor"/><path d="M9 1.5v1.8M9 14.7v1.8M1.5 9h1.8M14.7 9h1.8M3.7 3.7l1.3 1.3M13 13l1.3 1.3M3.7 14.3L5 13M13 5l1.3-1.3"/></svg>';
+const themeListeners = [];   // e.g. minimap repaint
+const theme = () => document.documentElement.dataset.theme;
+function applyThemeButton() {
+  const b = document.getElementById("btnTheme"), dark = theme() === "dark";
+  b.innerHTML = dark ? ICON_SUN : ICON_MOON;          // show the appearance you would switch to
+  b.title = b.ariaLabel = t(dark ? "toLight" : "toDark");
+}
+function setTheme(th, save = true) {
+  document.documentElement.dataset.theme = th;
+  if (save) try { localStorage.setItem("stammbaum-theme", th); } catch {}
+  applyThemeButton();
+  themeListeners.forEach(fn => fn());
+}
+document.getElementById("btnTheme").onclick = () => setTheme(theme() === "dark" ? "light" : "dark");
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e => {   // follow the system until the user chooses
+  let saved = null; try { saved = localStorage.getItem("stammbaum-theme"); } catch {}
+  if (!saved) setTheme(e.matches ? "dark" : "light", false);
+});
+applyLang();
+
 function startViewer(data) {
-  const HOME_GIVEN = "Fabrice", HOME_SURNAME = "Beaumont"; // start person
   const W = 184, H = 64;                                     // person card size
 
   const people = new Map(data.people.map(p => [p.id, { ...p, parentFam: null, spouseFams: [] }]));
@@ -152,7 +499,7 @@ function startViewer(data) {
     for (const s of [f.husband, f.wife]) if (s) people.get(s).spouseFams.push(f.id);
   }
 
-  const fullName = p => [p.given, p.surname].filter(Boolean).join(" ") || "Unbekannt";
+  const fullName = p => [p.given, p.surname].filter(Boolean).join(" ") || t("unknown");
   const lifeSpan = p => (p.by || p.dy) ? `${p.by ? "* " + p.by : ""}${p.by && p.dy ? "  " : ""}${p.dy ? "† " + p.dy : ""}` : "";
   const clip = (s, n) => s.length > n ? s.slice(0, n - 1) + "…" : s;
   const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -185,99 +532,158 @@ function startViewer(data) {
   }
   // ELK layered layout (better crossing minimisation than dagre for genealogies)
   const MARGIN = 300;
-  const elkGraph = {
-    id: "root",
-    layoutOptions: {
-      "elk.algorithm": "layered",
-      "elk.direction": "DOWN",
-      "elk.spacing.nodeNode": "40",
-      "elk.layered.spacing.nodeNodeBetweenLayers": "34",
-      "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
-      "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
-      "elk.layered.thoroughness": "20",
-      "elk.separateConnectedComponents": "true",
-      "elk.spacing.componentComponent": "120",
-      "elk.edgeRouting": "POLYLINE",
-    },
-    children: [], edges: [],
+  const LAYOUT_OPTIONS = {
+    "elk.algorithm": "layered",
+    "elk.direction": "DOWN",
+    "elk.spacing.nodeNode": "40",
+    "elk.layered.spacing.nodeNodeBetweenLayers": "34",
+    "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
+    "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
+    "elk.layered.thoroughness": "20",
+    "elk.separateConnectedComponents": "true",
+    "elk.spacing.componentComponent": "120",
+    "elk.edgeRouting": "POLYLINE",
   };
-  for (const [bid, ids] of blocks) elkGraph.children.push({ id: bid, width: ids.length * W + (ids.length - 1) * GAP, height: H });
-  for (const f of fams.values()) {
-    elkGraph.children.push({ id: f.id, width: 12, height: 12 });
-    const parentBlock = blockOf.get(f.husband || f.wife);
-    elkGraph.edges.push({ id: "e" + elkGraph.edges.length, sources: [parentBlock], targets: [f.id] });
-    const childBlocks = new Set(f.children.map(c => blockOf.get(c)));
-    childBlocks.delete(parentBlock);
-    for (const cb of childBlocks) elkGraph.edges.push({ id: "e" + elkGraph.edges.length, sources: [f.id], targets: [cb] });
-  }
-
-  async function render() {
-    const laid = await new ELK().layout(elkGraph);
-    const node = new Map(laid.children.map(n => [n.id, n]));   // ELK gives top-left corners
-    // resolve person positions inside their block
-    const P = new Map();
+  // keep = null (everyone) or a Set of person + family ids (Fokus mode: "as if alone in the database")
+  const visIn = keep => id => !keep || keep.has(id);
+  const partnersIn = (f, keep) => [f.husband, f.wife].filter(x => x && visIn(keep)(x));
+  function elkGraphFor(keep) {
+    const vis = visIn(keep);
+    const graph = { id: "root", layoutOptions: LAYOUT_OPTIONS, children: [], edges: [] };
+    const blocksUsed = new Map(), famsUsed = [];
     for (const [bid, ids] of blocks) {
+      const kept = ids.filter(vis);
+      if (!kept.length) continue;
+      blocksUsed.set(bid, kept);
+      graph.children.push({ id: bid, width: kept.length * W + (kept.length - 1) * GAP, height: H });
+    }
+    for (const f of fams.values()) {
+      const ps = partnersIn(f, keep);
+      if (!ps.length || !vis(f.id)) continue;
+      famsUsed.push(f);
+      graph.children.push({ id: f.id, width: 12, height: 12 });
+      const parentBlock = blockOf.get(ps[0]);
+      graph.edges.push({ id: "e" + graph.edges.length, sources: [parentBlock], targets: [f.id] });
+      const childBlocks = new Set(f.children.filter(vis).map(c => blockOf.get(c)));
+      childBlocks.delete(parentBlock);
+      for (const cb of childBlocks) graph.edges.push({ id: "e" + graph.edges.length, sources: [f.id], targets: [cb] });
+    }
+    return { graph, blocksUsed, famsUsed };
+  }
+  async function computeLayout(keep) {
+    const { graph, blocksUsed, famsUsed } = elkGraphFor(keep);
+    const laid = await new ELK().layout(graph);
+    const node = new Map(laid.children.map(n => [n.id, n]));   // ELK gives top-left corners
+    const P = new Map();
+    for (const [bid, ids] of blocksUsed) {                      // persons inside their couple block
       const b = node.get(bid);
       let x = MARGIN + b.x + W / 2;
       for (const id of ids) { P.set(id, { x, y: MARGIN + b.y + H / 2 }); x += W + GAP; }
     }
-    // family dot: horizontally between the two partners, vertically from the layout
-    for (const f of fams.values()) {
-      const ps = [f.husband, f.wife].filter(Boolean).map(id => P.get(id));
+    for (const f of famsUsed) {                                 // family dot between the partners
+      const ps = partnersIn(f, keep).map(id => P.get(id));
       const n = node.get(f.id);
       P.set(f.id, { x: ps.reduce((s, p) => s + p.x, 0) / ps.length, y: MARGIN + n.y + n.height / 2 });
     }
+    return { P, bounds: { w: laid.width + 2 * MARGIN, h: laid.height + 2 * MARGIN } };
+  }
+
+  async function render() {
+    const full = await computeLayout(null);
+    let P = full.P, bounds = full.bounds, keep = null;
     const pos = id => P.get(id);
-    const bounds = { w: laid.width + 2 * MARGIN, h: laid.height + 2 * MARGIN };
+    const vis = id => !keep || keep.has(id);
 
     const svg = d3.select("#map");
     const viewport = d3.select("#viewport");
 
-    // edges
+    // edges: {a, b, f, kind}; the path is computed from the current positions
     const edgeData = [];
     for (const f of fams.values()) {
-      const fp = pos(f.id);
-      const partners = [f.husband, f.wife].filter(Boolean);
-      if (partners.length === 2) {          // marriage line between the cards, then down to the dot
-        const [a, b] = partners.map(pos).sort((u, v) => u.x - v.x);
-        edgeData.push({ a: partners[0], b: f.id,
-          d: `M${a.x + W / 2},${a.y}H${b.x - W / 2}M${fp.x},${a.y}V${fp.y - 6}` });
-        edgeData.push({ a: partners[1], b: f.id, d: "" });
-      } else {
-        const sp = pos(partners[0]);
-        edgeData.push({ a: partners[0], b: f.id, d: curve(sp.x, sp.y + H / 2, fp.x, fp.y - 6) });
-      }
-      for (const c of f.children) {
-        const cp = pos(c);
-        edgeData.push({ a: f.id, b: c, d: curve(fp.x, fp.y + 6, cp.x, cp.y - H / 2) });
-      }
+      for (const x of [f.husband, f.wife]) if (x) edgeData.push({ a: x, b: f.id, f, kind: "partner" });
+      for (const c of f.children) edgeData.push({ a: f.id, b: c, f, kind: "child" });
     }
     function curve(x1, y1, x2, y2) {
       const ym = (y1 + y2) / 2;
       return `M${x1},${y1}C${x1},${ym} ${x2},${ym} ${x2},${y2}`;
     }
-    const edgeSel = d3.select("#edges").selectAll("path").data(edgeData).join("path").attr("class", "edge").attr("d", e => e.d);
+    const kidsIn = f => f.children.filter(c => vis(c) && P.has(c));   // children currently shown
+    function edgePath(e) {
+      if (!vis(e.a) || !vis(e.b) || !P.has(e.a) || !P.has(e.b)) return "";
+      const fp = pos(e.f.id);
+      if (e.kind === "child") { const cp = pos(e.b); return curve(fp.x, fp.y + 6, cp.x, cp.y - H / 2); }
+      const ps = partnersIn(e.f, keep), hasKids = kidsIn(e.f).length > 0;
+      if (ps.length === 2) {                // marriage line between the cards, then down to the dot (drawn once)
+        if (e.a !== ps[0]) return "";
+        const [a, b] = ps.map(pos).sort((u, v) => u.x - v.x);
+        const line = `M${a.x + W / 2},${a.y}H${b.x - W / 2}`;
+        return hasKids ? `${line}M${fp.x},${a.y}V${fp.y - 6}` : line;   // childless: partnership line only
+      }
+      if (!hasKids) return "";              // single parent without children: nothing to connect
+      const sp = pos(e.a);
+      return curve(sp.x, sp.y + H / 2, fp.x, fp.y - 6);
+    }
+    const edgeSel = d3.select("#edges").selectAll("path").data(edgeData).join("path").attr("class", "edge");
 
     // family dots
     const famSel = d3.select("#fams").selectAll("g").data([...fams.values()]).join("g")
-      .attr("class", f => "fam" + (f.unmarried ? " unmarried" : ""))
-      .attr("transform", f => `translate(${pos(f.id).x},${pos(f.id).y})`);
+      .attr("class", f => "fam" + (f.unmarried ? " unmarried" : ""));
     famSel.append("circle").attr("r", 6);
     famSel.append("title").text(f => {
       const names = [f.husband, f.wife].filter(Boolean).map(id => fullName(people.get(id))).join(" ⚭ ");
-      return names + (f.marrDate ? `\n⚭ ${f.marrDate}` : "") + (f.marrPlace ? ` in ${f.marrPlace}` : "");
+      return names + (f.marrDate ? `\n⚭ ${f.marrDate}` : "") + (f.marrPlace ? t("in") + f.marrPlace : "");
     });
 
     // person cards
     const personSel = d3.select("#people").selectAll("g").data([...people.values()]).join("g")
       .attr("class", p => `person ${p.sex}`)
-      .attr("transform", p => `translate(${pos(p.id).x - W / 2},${pos(p.id).y - H / 2})`)
       .on("click", (ev, p) => { ev.stopPropagation(); select(p.id); });
+    personSel.append("rect").attr("class", "base").attr("width", W).attr("height", H).attr("rx", 8);
     personSel.append("rect").attr("class", "card").attr("width", W).attr("height", H).attr("rx", 8);
     personSel.append("rect").attr("class", "stripe").attr("width", 6).attr("height", H).attr("rx", 3);
-    personSel.append("text").attr("class", "given").attr("x", 14).attr("y", 21).text(p => clip(p.given || "?", 20));
-    personSel.append("text").attr("class", "surname").attr("x", 14).attr("y", 38).text(p => clip(p.surname, 24));
-    personSel.append("text").attr("class", "life").attr("x", 14).attr("y", 55).text(lifeSpan);
+    const avatar = personSel.append("g").attr("class", "avatar").attr("clip-path", "url(#avatarClip)");
+    avatar.append("circle").attr("class", "bg").attr("cx", 34).attr("cy", 32).attr("r", 20);
+    avatar.filter(p => !p.photo).append("use").attr("href", p => `#pic-${p.sex === "M" || p.sex === "F" ? p.sex : "U"}`)
+      .attr("x", 14).attr("y", 12).attr("width", 40).attr("height", 40);
+    avatar.filter(p => p.photo).append("image").attr("href", p => p.photo).attr("x", 14).attr("y", 12)
+      .attr("width", 40).attr("height", 40).attr("preserveAspectRatio", "xMidYMid slice");
+    personSel.append("text").attr("class", "given").attr("y", 21);
+    personSel.append("text").attr("class", "surname").attr("y", 38);
+    personSel.append("text").attr("class", "life").attr("y", 55).text(lifeSpan);
+    personSel.append("text").attr("class", "rel").attr("x", W / 2).attr("y", H + 14);
+
+    // photo toggle (remembered per browser); text moves right and is clipped shorter next to the avatar
+    let showPhotos = true;
+    try { showPhotos = localStorage.getItem("stammbaum-photos") !== "0"; } catch {}
+    function applyPhotos() {
+      viewport.classed("photos", showPhotos);
+      const x = showPhotos ? 62 : 14;
+      personSel.select(".given").attr("x", x).text(p => clip(p.given || "?", showPhotos ? 15 : 20));
+      personSel.select(".surname").attr("x", x).text(p => clip(p.surname, showPhotos ? 18 : 24));
+      personSel.select(".life").attr("x", x);
+      const b = document.getElementById("btnPhotos");
+      b.setAttribute("aria-pressed", showPhotos);
+      b.title = t(showPhotos ? "photosHide" : "photosShow");
+    }
+    applyPhotos();
+    document.getElementById("btnPhotos").onclick = () => {
+      showPhotos = !showPhotos;
+      try { localStorage.setItem("stammbaum-photos", showPhotos ? "1" : "0"); } catch {}
+      applyPhotos();
+    };
+    langListeners.push(applyPhotos);
+
+    // place everything at the current positions; hidden (Fokus) elements keep their last spot
+    function place() {
+      viewport.classed("focus", !!keep);
+      personSel.classed("inFocus", p => vis(p.id)).filter(p => P.has(p.id))
+        .attr("transform", p => `translate(${pos(p.id).x - W / 2},${pos(p.id).y - H / 2})`);
+      famSel.classed("inFocus", f => vis(f.id) && P.has(f.id)).classed("childless", f => !kidsIn(f).length)
+        .filter(f => P.has(f.id))
+        .attr("transform", f => `translate(${pos(f.id).x},${pos(f.id).y})`);
+      edgeSel.attr("d", edgePath);
+    }
+    place();
 
     // ---------- pan & zoom ----------
     const zoom = d3.zoom().scaleExtent([0.03, 2.5]).on("zoom", ev => {
@@ -303,39 +709,375 @@ function startViewer(data) {
 
     // ---------- selection & lineage ----------
     let selected = null;
+    // Direct line, limited to genUp generations of ancestors / genDown of descendants (null = all).
+    let genUp = null, genDown = null;
     function lineage(id) {
       const set = new Set([id]);
-      const up = pid => {                       // ancestors
+      const up = (pid, g) => {                  // ancestors
+        if (genUp !== null && g >= genUp) return;
         const f = people.get(pid).parentFam; if (!f || set.has(f)) return;
         set.add(f); const fm = fams.get(f);
-        for (const s of [fm.husband, fm.wife]) if (s) { set.add(s); up(s); }
+        for (const s of [fm.husband, fm.wife]) if (s) { set.add(s); up(s, g + 1); }
       };
-      const down = pid => {                     // descendants
+      const down = (pid, g) => {                // descendants
         for (const f of people.get(pid).spouseFams) {
           if (set.has(f) && pid !== id) continue;
-          set.add(f);
-          for (const c of fams.get(f).children) if (!set.has(c)) { set.add(c); down(c); }
+          set.add(f);                           // own partnerships always count (g = 0)
+          if (genDown !== null && g >= genDown) continue;
+          for (const c of fams.get(f).children) if (!set.has(c)) { set.add(c); down(c, g + 1); }
         }
       };
-      up(id); down(id);
+      up(id, 0); down(id, 0);
       return set;
     }
+    let genFitTimer = 0;
+    function setupGenInputs() {
+      for (const [elId, apply] of [["genUp", v => { genUp = v; }], ["genDown", v => { genDown = v; }]]) {
+        const el = document.getElementById(elId);
+        el.addEventListener("input", () => {
+          const n = el.value === "" ? null : Math.max(0, Math.min(99, parseInt(el.value, 10)));
+          apply(Number.isNaN(n) ? null : n);
+          applyHighlight();
+          // zoom to what is highlighted now (Fokus mode fits itself after the re-layout)
+          clearTimeout(genFitTimer);
+          if (!focusOn && lastFocusSet.size) genFitTimer = setTimeout(() => fitSet(lastFocusSet), 400);
+        });
+      }
+    }
+    setupGenInputs();
+    // Oldest ancestor = the ancestor most generations up; ties -> earliest known birth year.
+    function oldestAncestor(id) {
+      let best = id, bestDepth = 0;
+      const seen = new Set([id]), queue = [[id, 0]];
+      while (queue.length) {
+        const [pid, d] = queue.shift();
+        const better = d > bestDepth || (d === bestDepth && (people.get(pid).by || 9999) < (people.get(best).by || 9999));
+        if (better) { best = pid; bestDepth = d; }
+        const f = people.get(pid).parentFam && fams.get(people.get(pid).parentFam);
+        if (f) for (const s of [f.husband, f.wife]) if (s && !seen.has(s)) { seen.add(s); queue.push([s, d + 1]); }
+      }
+      return best;
+    }
+    // Bloodline = the ancestor and everyone descended from them (+ the family dots in between).
+    function bloodline(root) {
+      const set = new Set([root]), stack = [root];
+      while (stack.length) {
+        for (const f of people.get(stack.pop()).spouseFams) {
+          const fm = fams.get(f);
+          if (!fm.children.length) continue;
+          set.add(f);
+          for (const c of fm.children) if (!set.has(c)) { set.add(c); stack.push(c); }
+        }
+      }
+      return set;
+    }
+
+    // Whole tree = bloodline plus all ancestors of everyone in it (brings in married-in partners' lines).
+    function familyTree(root) {
+      const set = bloodline(root);
+      const stack = [...set].filter(id => people.has(id));
+      while (stack.length) {
+        const f = people.get(stack.pop()).parentFam;
+        if (!f) continue;
+        set.add(f);
+        const fm = fams.get(f);
+        for (const x of [fm.husband, fm.wife]) if (x && !set.has(x)) { set.add(x); stack.push(x); }
+      }
+      return set;
+    }
+
+    // Highlight modes, drawn bottom to top (bloodline over tree).
+    const MODES = {
+      tree: { label: "familyTree", help: "familyTreeHelp", sub: "familyTreeSub", compute: familyTree },
+      blood: { label: "bloodline", help: "bloodlineHelp", sub: "bloodlineSub", compute: bloodline },
+    };
+    const modes = { tree: null, blood: null };   // name -> { root, set } while switched on
+    const EMPTY = new Set();
+    // ---------- kinship: how is a person related to the selected one ("ego")? ----------
+    // Blood relatives via the nearest common ancestor: a = generations up from ego, b = down to the person.
+    const KIN = {
+      de: {
+        pick: (sex, m, f, u) => sex === "M" ? m : sex === "F" ? f : u,
+        // up to 3 repetitions written out (Urururgroßvater), more as a multiplier (4× Urgroßvater)
+        ur: (n, base) => n <= 0 ? base : n <= 3 ? "Ur" + "ur".repeat(n - 1) + base.toLowerCase()
+          : `${n}× Ur${base.toLowerCase()}`,
+        grade: n => n >= 2 ? ` ${n}. Grades` : "",
+        name(a, b, sex, half) {
+          const P = (m, f, u) => this.pick(sex, m, f, u);
+          if (a === 0) return b === 1 ? P("Sohn", "Tochter", "Kind") : b === 2 ? P("Enkel", "Enkelin", "Enkelkind")
+            : this.ur(b - 2, P("Enkel", "Enkelin", "Enkelkind"));
+          if (b === 0) return a === 1 ? P("Vater", "Mutter", "Elternteil") : this.ur(a - 2, P("Großvater", "Großmutter", "Großelternteil"));
+          if (a === 1 && b === 1) return (half ? "Halb" : "") + (half ? P("bruder", "schwester", "geschwister") : P("Bruder", "Schwester", "Geschwister"));
+          const nephew = r => r === 1 ? P("Neffe", "Nichte", "Neffe/Nichte") : this.ur(r - 2, P("Großneffe", "Großnichte", "Großneffe/-nichte"));
+          const uncle = r => r === 1 ? P("Onkel", "Tante", "Onkel/Tante") : this.ur(r - 2, P("Großonkel", "Großtante", "Großonkel/-tante"));
+          if (a === b) return P("Cousin", "Cousine", "Cousin/Cousine") + this.grade(a - 1);
+          if (b > a) return nephew(b - a) + this.grade(a);
+          return uncle(a - b) + this.grade(b);
+        },
+        spouse: (sex, unmarried) => unmarried ? (sex === "F" ? "Partnerin" : "Partner") : sex === "M" ? "Ehemann" : sex === "F" ? "Ehefrau" : "Ehepartner",
+        step: { parent: ["Stiefvater", "Stiefmutter", "Stiefelternteil"], childInLaw: ["Schwiegersohn", "Schwiegertochter", "Schwiegerkind"],
+                sibInLaw: ["Schwager", "Schwägerin", "Schwager/Schwägerin"], parentInLaw: ["Schwiegervater", "Schwiegermutter", "Schwiegerelternteil"],
+                stepChild: ["Stiefsohn", "Stieftochter", "Stiefkind"] },
+        byMarriage: w => `${w} (angeheiratet)`,
+      },
+      en: {
+        pick: (sex, m, f, u) => sex === "M" ? m : sex === "F" ? f : u,
+        great: (n, base) => n <= 0 ? base : n <= 3 ? "great-".repeat(n) + base : `${n}× great-${base}`,
+        ord: n => ["", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"][n] || `${n}th`,
+        removed: r => r === 0 ? "" : r === 1 ? " once removed" : r === 2 ? " twice removed" : ` ${r} times removed`,
+        name(a, b, sex, half) {
+          const P = (m, f, u) => this.pick(sex, m, f, u);
+          if (a === 0) return b === 1 ? P("son", "daughter", "child") : this.great(b - 2, P("grandson", "granddaughter", "grandchild"));
+          if (b === 0) return a === 1 ? P("father", "mother", "parent") : this.great(a - 2, P("grandfather", "grandmother", "grandparent"));
+          if (a === 1 && b === 1) return (half ? "half-" : "") + P("brother", "sister", "sibling");
+          if (a === 1) return b === 2 ? P("nephew", "niece", "nephew/niece") : this.great(b - 3, P("grandnephew", "grandniece", "grandnephew/-niece"));
+          if (b === 1) return this.great(a - 2, P("uncle", "aunt", "uncle/aunt"));
+          return `${this.ord(Math.min(a, b) - 1)} cousin${this.removed(Math.abs(a - b))}`;
+        },
+        spouse: (sex, unmarried) => unmarried ? "partner" : sex === "M" ? "husband" : sex === "F" ? "wife" : "spouse",
+        step: { parent: ["stepfather", "stepmother", "stepparent"], childInLaw: ["son-in-law", "daughter-in-law", "child-in-law"],
+                sibInLaw: ["brother-in-law", "sister-in-law", "sibling-in-law"], parentInLaw: ["father-in-law", "mother-in-law", "parent-in-law"],
+                stepChild: ["stepson", "stepdaughter", "stepchild"] },
+        byMarriage: w => `${w} by marriage`,
+      },
+    };
+    const parentsOf = id => { const f = people.get(id).parentFam && fams.get(people.get(id).parentFam); return f ? [f.husband, f.wife].filter(Boolean) : []; };
+    const spousesOf = id => people.get(id).spouseFams.map(fid => { const f = fams.get(fid);
+      return { id: f.husband === id ? f.wife : f.husband, fam: f }; }).filter(x => x.id);
+    function ancestorDepths(id) {                      // id -> generations up (self = 0), shortest path
+      const d = new Map([[id, 0]]), q = [id];
+      while (q.length) { const x = q.shift(); for (const p of parentsOf(x)) if (!d.has(p)) { d.set(p, d.get(x) + 1); q.push(p); } }
+      return d;
+    }
+    let relCache = { key: "", map: new Map() };
+    function relationsFor(ego) {
+      const key = ego + "|" + lang;
+      if (relCache.key === key) return relCache.map;
+      const K = KIN[lang], out = new Map(), blood = new Map();
+      const put = (id, label, links) => out.set(id, `${label} (${links})`);   // links = parent/child/partner steps
+      const up = ancestorDepths(ego), egoParents = new Set(parentsOf(ego));
+      for (const id of people.keys()) {                // blood relatives
+        if (id === ego) continue;
+        let best = null;
+        for (const [anc, b] of ancestorDepths(id)) {
+          const a = up.get(anc);
+          if (a !== undefined && (!best || a + b < best.a + best.b)) best = { a, b };
+        }
+        if (!best) continue;
+        const half = best.a === 1 && best.b === 1 && parentsOf(id).filter(p => egoParents.has(p)).length === 1;
+        blood.set(id, best);
+        put(id, K.name(best.a, best.b, people.get(id).sex, half), best.a + best.b);
+      }
+      const S = (arr, id) => K.pick(people.get(id).sex, ...arr);
+      for (const { id, fam } of spousesOf(ego)) put(id, K.spouse(people.get(id).sex, fam.unmarried), 1);
+      for (const [x, { a, b }] of blood) {             // partners of blood relatives
+        for (const { id: sp } of spousesOf(x)) {
+          if (out.has(sp) || sp === ego) continue;
+          const label = a === 1 && b === 0 ? S(K.step.parent, sp) : a === 0 && b === 1 ? S(K.step.childInLaw, sp)
+            : a === 1 && b === 1 ? S(K.step.sibInLaw, sp) : K.byMarriage(K.name(a, b, people.get(sp).sex, false));
+          put(sp, label, a + b + 1);
+        }
+      }
+      for (const { id: sp } of spousesOf(ego)) {        // the partner's family
+        for (const p of parentsOf(sp)) if (!out.has(p)) put(p, S(K.step.parentInLaw, p), 2);
+        const pf = people.get(sp).parentFam && fams.get(people.get(sp).parentFam);
+        if (pf) for (const c of pf.children) if (c !== sp && !out.has(c)) put(c, S(K.step.sibInLaw, c), 3);
+        for (const fid of people.get(sp).spouseFams) for (const c of fams.get(fid).children)
+          if (!out.has(c) && c !== ego) put(c, S(K.step.stepChild, c), 2);
+      }
+      relCache = { key, map: out };
+      return out;
+    }
+    let relOn = false;
+    function applyRelations() {
+      viewport.classed("relations", relOn && !!selected);
+      const map = relOn && selected ? relationsFor(selected) : new Map();
+      personSel.select(".rel").text(p => map.get(p.id) || "");
+      personSel.classed("related", p => map.has(p.id));
+      document.getElementById("btnRel").setAttribute("aria-pressed", relOn);
+    }
+    document.getElementById("btnRel").onclick = () => { relOn = !relOn; applyRelations(); };
+
+    // Generation of every person relative to `ref` (parents -1, children +1, partners 0), by BFS.
+    function generationOffsets(ref) {
+      const off = new Map([[ref, 0]]), queue = [ref];
+      while (queue.length) {
+        const id = queue.shift(), g = off.get(id), p = people.get(id);
+        const next = [];
+        const pf = p.parentFam && fams.get(p.parentFam);
+        if (pf) for (const x of [pf.husband, pf.wife]) if (x) next.push([x, g - 1]);
+        for (const fid of p.spouseFams) {
+          const f = fams.get(fid);
+          for (const x of [f.husband, f.wife]) if (x) next.push([x, g]);
+          for (const c of f.children) next.push([c, g + 1]);
+        }
+        for (const [x, gx] of next) if (!off.has(x)) { off.set(x, gx); queue.push(x); }
+      }
+      return off;
+    }
+    // Bloodline / whole tree cut to the ↑/↓ generation limits, counted from the selected person
+    // (or from the furthest ancestor when nobody is selected).
+    function limitedSet(m) {
+      const full = modes[m].set;
+      if (genUp === null && genDown === null) return full;
+      const off = generationOffsets(selected || modes[m].root);
+      const ok = id => { const g = off.get(id);
+        return g !== undefined && (genUp === null || g >= -genUp) && (genDown === null || g <= genDown); };
+      const out = new Set();
+      for (const id of full) {
+        if (people.has(id)) { if (ok(id)) out.add(id); }
+        else if ([fams.get(id).husband, fams.get(id).wife].some(x => x && ok(x))) out.add(id);   // family dot
+      }
+      return out;
+    }
+
+    function applyHighlight() {
+      const sel = selected ? lineage(selected) : EMPTY;
+      const on = Object.keys(MODES).filter(m => modes[m]);
+      const eff = Object.fromEntries(on.map(m => [m, limitedSet(m)]));      // what is actually shown
+      const lit = id => sel.has(id) || on.some(m => eff[m].has(id));
+      viewport.classed("dimmed", !!selected || on.length > 0);
+      personSel.classed("hl", p => sel.has(p.id)).classed("lit", p => lit(p.id)).classed("selected", p => p.id === selected);
+      famSel.classed("hl", f => sel.has(f.id)).classed("lit", f => lit(f.id));
+      edgeSel.classed("hl", e => sel.has(e.a) && sel.has(e.b)).classed("lit", e => lit(e.a) && lit(e.b));
+      // partners and siblings of the selected person
+      const spouseOf = new Map(), sibs = new Set(), sp = selected && people.get(selected);
+      if (sp) {
+        for (const fid of sp.spouseFams) {
+          const f = fams.get(fid), other = f.husband === selected ? f.wife : f.husband;
+          if (other) spouseOf.set(fid, other);
+        }
+        const pf = sp.parentFam && fams.get(sp.parentFam);
+        if (pf) for (const c of pf.children) if (c !== selected) sibs.add(c);
+      }
+      const spouses = new Set(spouseOf.values());
+      // everything that is highlighted = the Fokus set
+      const focusSet = new Set([...sel, ...spouses, ...sibs]);
+      for (const m of on) for (const id of eff[m]) focusSet.add(id);
+      for (const f of fams.values()) if (partnersIn(f, focusSet).length && f.children.some(c => focusSet.has(c))) focusSet.add(f.id);
+      lastFocusSet = focusSet;
+      personSel.classed("spouse", p => spouses.has(p.id)).classed("sib", p => sibs.has(p.id));
+      famSel.classed("sibfam", f => sibs.size > 0 && f.id === sp.parentFam);
+      const spouseSex = e => {          // marriage line (partner -> family dot) of a selected person's family
+        const o = spouseOf.get(e.b);
+        return o && e.kind === "partner" && (e.a === o || e.a === selected) ? (people.get(o).sex || "U") : null;
+      };
+      for (const x of ["M", "F", "U"]) edgeSel.classed("spouse-" + x, e => spouseSex(e) === x);
+      edgeSel.classed("sib", e => sibs.has(e.b) && e.a === sp.parentFam);
+      for (const m of Object.keys(MODES)) {
+        const set = modes[m] ? eff[m] : EMPTY;
+        personSel.classed(m, p => set.has(p.id));
+        famSel.classed(m, f => set.has(f.id));
+        edgeSel.classed(m, e => set.has(e.a) && set.has(e.b));
+        // header toggle: tooltip names the furthest ancestor it would use (or uses)
+        const btn = document.getElementById("btn-" + m);
+        const root = modes[m] ? modes[m].root : selected ? oldestAncestor(selected) : null;
+        btn.setAttribute("aria-pressed", !!modes[m]);
+        btn.setAttribute("aria-disabled", !modes[m] && !selected);
+        btn.title = [t(MODES[m].label), root ? t(MODES[m].sub).replace("{name}", nameYear(root)) : "",
+          "", t(MODES[m].help), !modes[m] && !selected ? "\n" + t("selectFirst") : ""].filter((x, i) => x || i === 2).join("\n");
+        btn.ariaLabel = t(MODES[m].label);
+      }
+      document.getElementById("btnFocus").setAttribute("aria-pressed", focusOn);
+      // legend next to the navigation hint: only what is visible right now
+      const item = (cls, label, help) => `<span class="item" title="${esc(help)}"><span class="swatch ${cls}" aria-hidden="true"></span>${esc(label)}</span>`;
+      document.getElementById("legend").innerHTML = [
+        sp ? item("", t("directLine"), t("directLineSub").replace("{name}", fullName(sp)) + "\n\n" + t("directLineHelp")) : "",
+        spouses.size ? item("spouse", t("spouseLegend"), t("spouseLegendSub") + "\n\n" + t("spouseLegendHelp")) : "",
+        sibs.size ? item("sib", t("sibLegend"), t("sibLegendSub") + "\n\n" + t("sibLegendHelp")) : "",
+        modes.blood ? item("blood", t("bloodline"), nameYear(modes.blood.root) + "\n\n" + t("bloodlineHelp")) : "",
+        modes.tree ? item("tree", t("familyTree"), nameYear(modes.tree.root) + "\n\n" + t("familyTreeHelp")) : "",
+      ].join("");
+      applyRelations();
+      if (focusOn) refocus();
+    }
+
+    // ---------- Fokus: re-run the layout on the highlighted people only ----------
+    let focusOn = false, lastFocusSet = EMPTY, focusKey = "", layoutToken = 0;
+    async function refocus(force = false) {
+      const want = focusOn && lastFocusSet.size > 0 ? lastFocusSet : null;
+      const key = want ? [...want].sort().join(",") : "";
+      if (!force && key === focusKey) return;
+      focusKey = key;
+      const token = ++layoutToken;
+      if (want) {
+        const res = await computeLayout(want);
+        if (token !== layoutToken) return;            // a newer request won
+        keep = want; P = res.P; bounds = res.bounds;
+      } else { keep = null; P = full.P; bounds = full.bounds; }
+      place();
+      paintMinimapBase();
+      if (keep) fitSet(keep);
+      else if (selected) { const p = pos(selected); flyTo(p.x, p.y, 0.8); }
+      else fitAll();
+    }
+    function setFocus(on) {
+      focusOn = on;
+      applyHighlight();
+      if (!on) refocus();
+      if (selected) showPanel(people.get(selected));
+    }
+    document.getElementById("btnFocus").onclick = () => setFocus(!focusOn);
+    function fitSet(set, ms = 750) {
+      const pts = [...set].filter(id => people.has(id) && P.has(id)).map(pos);
+      if (!pts.length) return;
+      const [w, h] = size();
+      const panelOpen = document.getElementById("panel").classList.contains("open") && w > 700;
+      const aw = (panelOpen ? w - 360 : w) - 80, ah = h - 160;   // room for top bar and panel
+      const x0 = Math.min(...pts.map(p => p.x)) - W / 2, x1 = Math.max(...pts.map(p => p.x)) + W / 2;
+      const y0 = Math.min(...pts.map(p => p.y)) - H / 2, y1 = Math.max(...pts.map(p => p.y)) + H / 2;
+      const k = Math.max(0.03, Math.min(1, aw / (x1 - x0), ah / (y1 - y0)));
+      const cx = (panelOpen ? (w - 360) / 2 : w / 2), cy = 64 + (h - 64) / 2;
+      svg.transition().duration(ms).call(zoom.transform,
+        d3.zoomIdentity.translate(cx - (x0 + x1) / 2 * k, cy - (y0 + y1) / 2 * k).scale(k));
+    }
+    function toggleMode(m, personId) {
+      const root = oldestAncestor(personId);
+      if (modes[m] && modes[m].root === root) modes[m] = null;
+      else modes[m] = { root, set: MODES[m].compute(root) };
+      applyHighlight();
+      if (selected) showPanel(people.get(selected));
+      if (modes[m] && !focusOn) fitSet(limitedSet(m));  // respects ↑/↓; in Fokus mode refocus() fits
+    }
+    for (const m of Object.keys(MODES)) document.getElementById("btn-" + m).onclick = () => {
+      if (modes[m] && (!selected || modes[m].root === oldestAncestor(selected))) {   // switch off
+        modes[m] = null; applyHighlight(); if (selected) showPanel(people.get(selected));
+      } else if (selected) toggleMode(m, selected);                                   // on / other ancestor
+    };
+
+    // Panel state: open, or collapsed to a tab while the person stays selected.
+    // Map clicks keep the collapsed state; search and chips (fly = true) open it again.
+    let panelCollapsed = false;
+    const panelEl = document.getElementById("panel"), tabEl = document.getElementById("panelTab");
+    function syncPanel() {
+      const show = !!selected;
+      panelEl.classList.toggle("open", show && !panelCollapsed);
+      tabEl.hidden = !(show && panelCollapsed);
+      if (show) {
+        const name = fullName(people.get(selected));
+        tabEl.querySelector(".name").textContent = name;
+        tabEl.title = tabEl.ariaLabel = t("expand").replace("{name}", name);
+      }
+    }
+    function setCollapsed(c) { panelCollapsed = c; syncPanel(); if (!c) panelEl.focus({ preventScroll: true }); }
     function select(id, fly = false) {
       selected = id;
-      const set = lineage(id);
-      viewport.classed("dimmed", true);
-      personSel.classed("hl", p => set.has(p.id)).classed("selected", p => p.id === id);
-      famSel.classed("hl", f => set.has(f.id));
-      edgeSel.classed("hl", e => set.has(e.a) && set.has(e.b));
+      if (fly) panelCollapsed = false;
+      applyHighlight();
       showPanel(people.get(id));
-      if (fly) { const p = pos(id); flyTo(p.x, p.y, 1); }
+      if (fly && !focusOn) { const p = pos(id); flyTo(p.x, p.y, 1); }   // in Fokus mode refocus() fits the view
     }
     function clearSelection() {
       selected = null;
-      viewport.classed("dimmed", false);
-      personSel.classed("hl selected", false);
-      document.getElementById("panel").classList.remove("open");
+      panelCollapsed = false;
+      applyHighlight();
+      syncPanel();
     }
+    document.getElementById("panelCollapse").onclick = () => setCollapsed(true);
+    tabEl.onclick = () => setCollapsed(false);
+    let swipeY = null;                                   // phone: swipe the bar up to open
+    tabEl.addEventListener("pointerdown", ev => { swipeY = ev.clientY; });
+    tabEl.addEventListener("pointerup", ev => { if (swipeY !== null && swipeY - ev.clientY > 20) setCollapsed(false); swipeY = null; });
 
     // ---------- detail panel ----------
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -343,13 +1085,14 @@ function startViewer(data) {
       return `<button class="chip ${p.sex}" data-id="${id}">${esc(fullName(p))}${l ? ` <small>${esc(l)}</small>` : ""}</button>`; };
     const chipList = (title, ids) => ids.length ? `<h3>${title}</h3><div class="chips">${ids.map(chip).join("")}</div>` : "";
 
+    const nameYear = id => { const q = people.get(id); return fullName(q) + (q.by ? ", * " + q.by : ""); };
     function showPanel(p) {
       const rows = [
-        ["Rufname", p.callName], ["Geboren", [p.birthDate, p.birthPlace].filter(Boolean).join(" in ")],
-        ["Getauft", [p.chrDate, p.chrPlace].filter(Boolean).join(" in ")],
-        ["Gestorben", [p.deathDate, p.deathPlace].filter(Boolean).join(" in ")],
-        ["Begraben", [p.burialDate, p.burialPlace].filter(Boolean).join(" in ")],
-        ["Beruf", p.occupation], ["Religion", p.religion], ["Notiz", p.note],
+        ["callName", p.callName], ["born", [p.birthDate, p.birthPlace].filter(Boolean).join(t("in"))],
+        ["christened", [p.chrDate, p.chrPlace].filter(Boolean).join(t("in"))],
+        ["died", [p.deathDate, p.deathPlace].filter(Boolean).join(t("in"))],
+        ["buried", [p.burialDate, p.burialPlace].filter(Boolean).join(t("in"))],
+        ["occupation", p.occupation], ["religion", p.religion], ["note", p.note],
       ].filter(r => r[1]);
       const pf = p.parentFam && fams.get(p.parentFam);
       const parents = pf ? [pf.husband, pf.wife].filter(Boolean) : [];
@@ -359,22 +1102,23 @@ function startViewer(data) {
         const f = fams.get(fid);
         const other = f.husband === p.id ? f.wife : f.husband;
         if (other) spouses += `<div class="chips" style="margin-bottom:6px">${chip(other)}</div>` +
-          (f.marrDate || f.marrPlace ? `<div class="sub" style="margin:-2px 0 8px">⚭ ${esc([f.marrDate, f.marrPlace].filter(Boolean).join(" in "))}</div>` : "");
+          (f.marrDate || f.marrPlace ? `<div class="sub" style="margin:-2px 0 8px">⚭ ${esc([f.marrDate, f.marrPlace].filter(Boolean).join(t("in")))}</div>` : "");
         children.push(...f.children);
       }
       document.getElementById("panelBody").innerHTML = `
-        <h2>${esc(fullName(p))}</h2><div class="sub">${esc(lifeSpan(p)) || "&nbsp;"}</div>
-        ${rows.length ? `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : ""}
-        ${chipList("Eltern", parents)}
-        ${spouses ? `<h3>Partner</h3>${spouses}` : ""}
-        ${chipList("Kinder", children)}
-        ${chipList("Geschwister", siblings)}`;
-      document.getElementById("panel").classList.add("open");
+        <h2>${esc(fullName(p))}</h2><div class="sub">${esc(lifeSpan(p)) || "&nbsp;"}${(g => g ? ` · <span class="gen" title="${esc(t("generationRange").replace("{from}", g.from).replace("{to}", g.to))}">${esc(g[lang])}</span>` : "")(generationOf(p.by))}</div>
+        ${rows.length ? `<dl>${rows.map(([k, v]) => `<dt>${t(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : ""}
+        ${chipList(t("parents"), parents)}
+        ${spouses ? `<h3>${t("partners")}</h3>${spouses}` : ""}
+        ${chipList(t("children"), children)}
+        ${chipList(`${t("siblings")} (${siblings.length})`, siblings)}`;
+      syncPanel();
     }
     document.getElementById("panelBody").addEventListener("click", ev => {
       const b = ev.target.closest("[data-id]"); if (b) select(b.dataset.id, true);
     });
     document.getElementById("panelClose").onclick = clearSelection;
+    langListeners.push(() => { applyHighlight(); if (selected) showPanel(people.get(selected)); syncPanel(); });
     document.addEventListener("keydown", ev => { if (ev.key === "Escape") clearSelection(); });
 
     // ---------- search ----------
@@ -404,22 +1148,31 @@ function startViewer(data) {
     const mm = document.getElementById("minimap"), ctx = mm.getContext("2d");
     const dpr = window.devicePixelRatio || 1;
     mm.width = mm.clientWidth * dpr; mm.height = mm.clientHeight * dpr;
-    const mmScale = Math.min(mm.width / bounds.w, mm.height / bounds.h);
-    const mmOff = [(mm.width - bounds.w * mmScale) / 2, (mm.height - bounds.h * mmScale) / 2];
+    let mmScale = 1, mmOff = [0, 0];
     const base = document.createElement("canvas"); base.width = mm.width; base.height = mm.height;
     const bctx = base.getContext("2d");
-    const colors = { M: "#4f7cac", F: "#c0587e", U: "#9a948a" };
-    for (const p of people.values()) {
-      const n = pos(p.id); bctx.fillStyle = colors[p.sex] || colors.U;
-      bctx.fillRect(mmOff[0] + (n.x - W / 2) * mmScale, mmOff[1] + (n.y - H / 2) * mmScale,
-        Math.max(1, W * mmScale), Math.max(1, H * mmScale));
+    const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+    let colors;
+    function paintMinimapBase() {           // colours come from the theme tokens
+      colors = { M: css("--male"), F: css("--female"), U: css("--unknown"), accent: css("--accent") };
+      mmScale = Math.min(mm.width / bounds.w, mm.height / bounds.h);
+      mmOff = [(mm.width - bounds.w * mmScale) / 2, (mm.height - bounds.h * mmScale) / 2];
+      bctx.clearRect(0, 0, base.width, base.height);
+      for (const p of people.values()) {
+        if (!vis(p.id) || !P.has(p.id)) continue;
+        const n = pos(p.id); bctx.fillStyle = colors[p.sex] || colors.U;
+        bctx.fillRect(mmOff[0] + (n.x - W / 2) * mmScale, mmOff[1] + (n.y - H / 2) * mmScale,
+          Math.max(1, W * mmScale), Math.max(1, H * mmScale));
+      }
     }
+    paintMinimapBase();
+    themeListeners.push(() => { paintMinimapBase(); drawMinimap(d3.zoomTransform(svg.node())); });
     function drawMinimap(t) {
       if (!mm.width || !mm.height) return;   // minimap hidden (narrow screens)
       ctx.clearRect(0, 0, mm.width, mm.height); ctx.drawImage(base, 0, 0);
       const [w, h] = size();
       const x0 = -t.x / t.k, y0 = -t.y / t.k;
-      ctx.strokeStyle = "#d08a1f"; ctx.lineWidth = 2 * dpr;
+      ctx.strokeStyle = colors.accent; ctx.lineWidth = 2 * dpr;
       ctx.strokeRect(mmOff[0] + x0 * mmScale, mmOff[1] + y0 * mmScale, (w / t.k) * mmScale, (h / t.k) * mmScale);
     }
     function minimapJump(ev) {
@@ -432,17 +1185,16 @@ function startViewer(data) {
     mm.addEventListener("pointermove", ev => { if (mmDrag) minimapJump(ev); });
     mm.addEventListener("pointerup", () => { mmDrag = false; });
 
-    // ---------- start ----------
-    const home = [...people.values()].find(p => p.given.startsWith(HOME_GIVEN) && p.surname === HOME_SURNAME);
-    document.getElementById("btnHome").onclick = () => home ? select(home.id, true) : fitAll();
+    // ---------- start: whole tree, nobody preferred ----------
     document.getElementById("btnFit").onclick = () => fitAll();
-    if (home) { const n = pos(home.id); flyTo(n.x, n.y, 0.8, 0); } else fitAll(0);
+    applyHighlight();                       // initial state of the header toggles and the legend
+    fitAll(0);
     document.getElementById("loading").remove();
   }
 
   // let the "loading" text paint before the (blocking) layout runs
   requestAnimationFrame(() => setTimeout(() => render().catch(err => {
-    document.getElementById("loading").textContent = "Layout-Fehler: " + err.message; console.error(err);
+    document.getElementById("loading").textContent = t("layoutError") + err.message; console.error(err);
   }), 30));
 }
 
@@ -461,7 +1213,7 @@ function showLock(enc) {
   const input = document.getElementById("lockPw"), msg = document.getElementById("lockMsg");
   const SKEY = "stammbaum-pw";
   async function tryOpen(pw, fromSession) {
-    msg.textContent = "Entschlüsseln…";
+    msg.textContent = t("decrypting");
     try {
       const data = await decrypt(enc, pw);
       try { sessionStorage.setItem(SKEY, pw); } catch {}
@@ -469,7 +1221,7 @@ function showLock(enc) {
       startViewer(data);
     } catch {
       try { sessionStorage.removeItem(SKEY); } catch {}
-      msg.textContent = fromSession ? "" : "Falsches Passwort.";
+      msg.textContent = fromSession ? "" : t("wrongPassword");
       input.select();
     }
   }
@@ -486,7 +1238,7 @@ function showLock(enc) {
 }
 if (window.FAMILY_DATA) startViewer(window.FAMILY_DATA);
 else if (window.FAMILY_DATA_ENC) showLock(window.FAMILY_DATA_ENC);
-else document.getElementById("loading").textContent = "Keine Daten gefunden – bitte python src/build_web.py ausführen.";
+else document.getElementById("loading").textContent = t("noData");
 </script>
 </body>
 </html>
