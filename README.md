@@ -25,7 +25,8 @@ Move around it like a map, zoom in on any branch, and click a person to see who 
 | Find someone | Type a name into the search box at the top left |
 | See details about a person | Click their card — a panel shows dates, places, parents, partners, children |
 | Jump to a relative | Click their name in that panel |
-| Go back to the start | Click **⌂ Start** |
+| Show only a few generations | Type numbers into **↑** (ancestors) and **↓** (descendants) at the top; empty = all |
+| Show or hide photos | Click **Fotos** |
 | See the whole tree at once | Click **⤢ Alles** |
 
 When you click a person, their direct line (parents, grandparents… and children, grandchildren…)
@@ -99,4 +100,4 @@ the recipient double-clicks `index.html`. Internet is needed on first open (libr
   each couple gets a small family dot, children hang below it. [ELK](https://eclipse.dev/elk/)'s layered
   algorithm places everything to reduce crossing lines.
 - **Rendering**: SVG with [d3](https://d3js.org/) pan/zoom, a minimap, search, and lineage highlighting.
-- The start person is set via `HOME_GIVEN` / `HOME_SURNAME` in `src/index.html`.
+- No person is preferred: the viewer opens on the whole tree.

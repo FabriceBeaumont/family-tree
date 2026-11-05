@@ -26,7 +26,8 @@ klicken, um mehr über sie zu erfahren.
 | jemanden zu finden | Namen oben links ins Suchfeld eingeben |
 | Details zu einer Person zu sehen | Auf ihre Karte klicken – rechts erscheinen Daten, Orte, Eltern, Partner, Kinder |
 | zu einer verwandten Person zu springen | Im Seitenfeld auf den Namen klicken |
-| zum Anfang zurückzukehren | Auf **⌂ Start** klicken |
+| nur wenige Generationen zu zeigen | Oben Zahlen bei **↑** (Vorfahren) und **↓** (Nachkommen) eintragen; leer = alle |
+| Fotos ein- oder auszublenden | Auf **Fotos** klicken |
 | den ganzen Stammbaum zu sehen | Auf **⤢ Alles** klicken |
 
 Klickt man auf eine Person, wird ihre direkte Linie (Eltern, Großeltern … und Kinder, Enkel …)

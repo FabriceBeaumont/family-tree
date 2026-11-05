@@ -154,6 +154,16 @@
   .btn { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px; font: inherit;
     font-size: 14px; font-weight: 500; border-radius: var(--radius); cursor: pointer; color: var(--ink); white-space: nowrap; }
   .btn svg { width: 16px; height: 16px; flex: none; }
+  /* generation limits: two tiny number fields, empty = all */
+  .gens { display: inline-flex; align-items: center; height: 40px; padding: 0 6px; gap: 2px; border-radius: var(--radius); }
+  .gens label { display: inline-flex; align-items: center; gap: 1px; color: var(--muted); font-size: 13px; font-weight: 600; cursor: text; }
+  .gens input { width: 30px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: var(--ink);
+    font: inherit; font-size: 14px; text-align: center; padding: 0; -moz-appearance: textfield; appearance: textfield; }
+  .gens input::-webkit-outer-spin-button, .gens input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .gens input::placeholder { color: var(--muted); }
+  .gens input:hover, .gens input:focus { background: var(--fill); outline: none; }
+  .gens input:focus-visible { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent); }
+  .gens input:not(:placeholder-shown) { color: var(--accent); font-weight: 700; }
   .btn:hover { background: color-mix(in srgb, var(--glass) 85%, var(--accent)); }
   .btn[aria-pressed="true"] { color: var(--accent); }
   .btn:focus-visible, .chip:focus-visible, .toggle:focus-visible, #panel .close:focus-visible, #panelTab:focus-visible {
@@ -235,10 +245,24 @@
   .toggle.focus[aria-pressed="true"] .sw { background: var(--accent); }
   .toggle .txt { display: grid; gap: 1px; min-width: 0; }
   .toggle small { color: var(--muted); font-size: 12px; line-height: 1.35; }
-  .toggle.legend { cursor: help; }
-  .toggle .swatch { flex: none; width: 36px; height: 4px; border-radius: 2px; background: var(--accent); }
-  .toggle .swatch.spouse { background: linear-gradient(90deg, var(--male) 50%, var(--female) 50%); }
-  .toggle .swatch.sib { background: color-mix(in srgb, var(--accent) 30%, var(--line)); }
+  /* legend: as quiet as the navigation hint */
+  .legend { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+  .legend li { display: flex; align-items: baseline; gap: 8px; cursor: help; line-height: 1.35; }
+  .legend b { font-weight: 600; }
+  .swatch { flex: none; width: 18px; height: 3px; border-radius: 2px; background: var(--accent); transform: translateY(-3px); }
+  .swatch.spouse { background: linear-gradient(90deg, var(--male) 50%, var(--female) 50%); }
+  .swatch.sib { background: color-mix(in srgb, var(--accent) 30%, var(--line)); }
+  .swatch.blood { background: var(--blood); }
+  .swatch.tree { background: var(--tree-line); }
+  /* collapsible highlight settings */
+  details.more { margin-top: 14px; }
+  details.more summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; color: var(--muted); padding: 6px 0; }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary::before { content: "›"; display: inline-block; width: 12px; font-size: 16px; transition: transform .2s; }
+  details.more[open] summary::before { transform: rotate(90deg); }
+  details.more summary:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 60%, transparent); border-radius: 6px; }
+  details.more .toggles { margin-top: 6px; }
   @media (prefers-reduced-motion: reduce) { .toggle .sw, .toggle .sw::after { transition: none; } }
 
   @media (prefers-reduced-motion: reduce) { #panel { transition: none; } }
@@ -280,8 +304,11 @@
     <input id="search" class="glass" type="search" placeholder="Person suchen…" data-i18n-attr="placeholder:search;aria-label:search" autocomplete="off">
     <ul id="results" class="glass"></ul>
   </div>
-  <button class="btn glass" id="btnHome" title="Zur Startperson" aria-label="Zur Startperson" data-i18n-attr="title:homeTitle;aria-label:homeTitle"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M2.5 7.2L8 2.5l5.5 4.7V13.5H9.8V9.8H6.2v3.7H2.5z"/></svg><span class="lbl" data-i18n="home">Start</span></button>
   <button class="btn glass" id="btnFit" title="Gesamten Baum zeigen" aria-label="Gesamten Baum zeigen" data-i18n-attr="title:fitTitle;aria-label:fitTitle"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg><span class="lbl" data-i18n="fit">Alles</span></button>
+  <div class="gens glass" role="group" data-i18n-attr="title:gensHelp;aria-label:gens">
+    <label><span aria-hidden="true">↑</span><input id="genUp" type="number" min="0" max="99" inputmode="numeric" placeholder="∞" data-i18n-attr="aria-label:genUp"></label>
+    <label><span aria-hidden="true">↓</span><input id="genDown" type="number" min="0" max="99" inputmode="numeric" placeholder="∞" data-i18n-attr="aria-label:genDown"></label>
+  </div>
   <button class="btn glass" id="btnPhotos" aria-pressed="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.6"/><circle cx="8" cy="6.4" r="2.2"/><path d="M3.9 12.7c.8-1.8 2.3-2.7 4.1-2.7s3.3.9 4.1 2.7"/></svg><span class="lbl" data-i18n="photos">Fotos</span></button>
   <button class="btn modePill focus" id="pill-focus" hidden></button>
   <button class="btn modePill tree" id="pill-tree" hidden></button>
@@ -308,7 +335,7 @@ const TEXT = {
     noData: "Keine Daten gefunden – bitte python src/build_web.py ausführen.",
     lockTitle: "Stammbaum", lockText: "Dieser Stammbaum ist passwortgeschützt.", password: "Passwort",
     open: "Öffnen", decrypting: "Entschlüsseln…", wrongPassword: "Falsches Passwort.",
-    search: "Person suchen…", home: "Start", homeTitle: "Zur Startperson", fit: "Alles", fitTitle: "Gesamten Baum zeigen",
+    search: "Person suchen…", fit: "Alles", fitTitle: "Gesamten Baum zeigen",
     details: "Details", close: "Auswahl aufheben", collapse: "Einklappen", expand: "Details zu {name} öffnen", minimap: "Übersichtskarte",
     hint: "Ziehen = verschieben · Mausrad = zoomen · Klick = Details & Linie",
     unknown: "Unbekannt", in: " in ",
@@ -316,6 +343,8 @@ const TEXT = {
     occupation: "Beruf", religion: "Religion", note: "Notiz",
     parents: "Eltern", partners: "Partner", children: "Kinder", siblings: "Geschwister",
     highlight: "Hervorheben", turnOff: "ausschalten",
+    gens: "Generationen", genUp: "Generationen nach oben (Vorfahren), leer = alle", genDown: "Generationen nach unten (Nachkommen), leer = alle",
+    gensHelp: "Begrenzt die direkte Linie der ausgewählten Person: ↑ wie viele Generationen Vorfahren, ↓ wie viele Generationen Nachkommen. Leer = alle. Mit Fokus werden nur diese Generationen gezeigt.",
     photos: "Fotos", photosHide: "Fotos ausblenden", photosShow: "Fotos einblenden",
     focus: "Fokus", focusSub: "Nur hervorgehobene Personen zeigen und neu anordnen",
     focusHelp: "Blendet alle nicht hervorgehobenen Personen aus und ordnet die übrigen neu an, als wären sie allein im Stammbaum. Berücksichtigt die direkte Linie, Partner und Geschwister sowie eingeschaltete Blutlinie / Gesamter Stammbaum. Ausschalten zeigt wieder alle.",
@@ -336,7 +365,7 @@ const TEXT = {
     noData: "No data found – please run python src/build_web.py.",
     lockTitle: "Family tree", lockText: "This family tree is password-protected.", password: "Password",
     open: "Open", decrypting: "Decrypting…", wrongPassword: "Wrong password.",
-    search: "Search for a person…", home: "Start", homeTitle: "Go to the start person", fit: "All", fitTitle: "Show the whole tree",
+    search: "Search for a person…", fit: "All", fitTitle: "Show the whole tree",
     details: "Details", close: "Clear selection", collapse: "Collapse", expand: "Open details for {name}", minimap: "Overview map",
     hint: "Drag = move · Scroll = zoom · Click = details & lineage",
     unknown: "Unknown", in: " in ",
@@ -344,6 +373,8 @@ const TEXT = {
     occupation: "Occupation", religion: "Religion", note: "Note",
     parents: "Parents", partners: "Partners", children: "Children", siblings: "Siblings",
     highlight: "Highlight", turnOff: "turn off",
+    gens: "Generations", genUp: "Generations up (ancestors), empty = all", genDown: "Generations down (descendants), empty = all",
+    gensHelp: "Limits the selected person's direct line: ↑ how many generations of ancestors, ↓ how many generations of descendants. Empty = all. With Focus, only these generations are shown.",
     photos: "Photos", photosHide: "Hide photos", photosShow: "Show photos",
     focus: "Focus", focusSub: "Show only highlighted people, rearranged",
     focusHelp: "Hides everyone who is not highlighted and rearranges the rest as if they were alone in the family tree. Uses the direct line, partners and siblings, plus Bloodline / Whole family tree when switched on. Turning it off shows everyone again.",
@@ -413,7 +444,6 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e => {   /
 applyLang();
 
 function startViewer(data) {
-  const HOME_GIVEN = "Fabrice", HOME_SURNAME = "Beaumont"; // start person
   const W = 184, H = 64;                                     // person card size
 
   const people = new Map(data.people.map(p => [p.id, { ...p, parentFam: null, spouseFams: [] }]));
@@ -628,23 +658,38 @@ function startViewer(data) {
 
     // ---------- selection & lineage ----------
     let selected = null;
+    // Direct line, limited to genUp generations of ancestors / genDown of descendants (null = all).
+    let genUp = null, genDown = null;
     function lineage(id) {
       const set = new Set([id]);
-      const up = pid => {                       // ancestors
+      const up = (pid, g) => {                  // ancestors
+        if (genUp !== null && g >= genUp) return;
         const f = people.get(pid).parentFam; if (!f || set.has(f)) return;
         set.add(f); const fm = fams.get(f);
-        for (const s of [fm.husband, fm.wife]) if (s) { set.add(s); up(s); }
+        for (const s of [fm.husband, fm.wife]) if (s) { set.add(s); up(s, g + 1); }
       };
-      const down = pid => {                     // descendants
+      const down = (pid, g) => {                // descendants
         for (const f of people.get(pid).spouseFams) {
           if (set.has(f) && pid !== id) continue;
-          set.add(f);
-          for (const c of fams.get(f).children) if (!set.has(c)) { set.add(c); down(c); }
+          set.add(f);                           // own partnerships always count (g = 0)
+          if (genDown !== null && g >= genDown) continue;
+          for (const c of fams.get(f).children) if (!set.has(c)) { set.add(c); down(c, g + 1); }
         }
       };
-      up(id); down(id);
+      up(id, 0); down(id, 0);
       return set;
     }
+    function setupGenInputs() {
+      for (const [elId, apply] of [["genUp", v => { genUp = v; }], ["genDown", v => { genDown = v; }]]) {
+        const el = document.getElementById(elId);
+        el.addEventListener("input", () => {
+          const n = el.value === "" ? null : Math.max(0, Math.min(99, parseInt(el.value, 10)));
+          apply(Number.isNaN(n) ? null : n);
+          applyHighlight();
+        });
+      }
+    }
+    setupGenInputs();
     // Oldest ancestor = the ancestor most generations up; ties -> earliest known birth year.
     function oldestAncestor(id) {
       let best = id, bestDepth = 0;
@@ -799,7 +844,7 @@ function startViewer(data) {
     };
 
     // Panel state: open, or collapsed to a tab while the person stays selected.
-    // Map clicks keep the collapsed state; search, chips and "Start" (fly = true) open it again.
+    // Map clicks keep the collapsed state; search and chips (fly = true) open it again.
     let panelCollapsed = false;
     const panelEl = document.getElementById("panel"), tabEl = document.getElementById("panelTab");
     function syncPanel() {
@@ -839,6 +884,9 @@ function startViewer(data) {
     const chipList = (title, ids) => ids.length ? `<h3>${title}</h3><div class="chips">${ids.map(chip).join("")}</div>` : "";
 
     const nameYear = id => { const q = people.get(id); return fullName(q) + (q.by ? ", * " + q.by : ""); };
+    let moreOpen = false;                   // remembered while switching people
+    const legendItem = (cls, label, sub, help) =>
+      `<li title="${esc(help)}"><span class="swatch ${cls}" aria-hidden="true"></span><span><b>${esc(label)}</b> · ${esc(sub)}</span></li>`;
     function showPanel(p) {
       const rows = [
         ["callName", p.callName], ["born", [p.birthDate, p.birthPlace].filter(Boolean).join(t("in"))],
@@ -866,20 +914,16 @@ function startViewer(data) {
         ${spouses ? `<h3>${t("partners")}</h3>${spouses}` : ""}
         ${chipList(t("children"), children)}
         ${chipList(`${t("siblings")} (${siblings.length})`, siblings)}
-        <h3>${t("highlight")}</h3>
+        <ul class="legend">
+          ${legendItem("", t("directLine"), t("directLineSub").replace("{name}", fullName(p)), t("directLineHelp"))}
+          ${spouses ? legendItem("spouse", t("spouseLegend"), t("spouseLegendSub"), t("spouseLegendHelp")) : ""}
+          ${siblings.length ? legendItem("sib", t("sibLegend"), t("sibLegendSub"), t("sibLegendHelp")) : ""}
+          ${modes.blood ? legendItem("blood", t("bloodline"), fullName(people.get(modes.blood.root)), t("bloodlineHelp")) : ""}
+          ${modes.tree ? legendItem("tree", t("familyTree"), fullName(people.get(modes.tree.root)), t("familyTreeHelp")) : ""}
+        </ul>
+        <details class="more" ${moreOpen ? "open" : ""}>
+          <summary>${t("highlight")}</summary>
         <div class="toggles">
-          <div class="toggle legend" title="${esc(t("directLineHelp"))}">
-            <span class="swatch" aria-hidden="true"></span>
-            <span class="txt"><span>${t("directLine")}</span><small>${esc(t("directLineSub").replace("{name}", fullName(p)))}</small></span>
-          </div>
-          ${spouses ? `<div class="toggle legend" title="${esc(t("spouseLegendHelp"))}">
-            <span class="swatch spouse" aria-hidden="true"></span>
-            <span class="txt"><span>${t("spouseLegend")}</span><small>${esc(t("spouseLegendSub"))}</small></span>
-          </div>` : ""}
-          ${siblings.length ? `<div class="toggle legend" title="${esc(t("sibLegendHelp"))}">
-            <span class="swatch sib" aria-hidden="true"></span>
-            <span class="txt"><span>${t("sibLegend")}</span><small>${esc(t("sibLegendSub"))}</small></span>
-          </div>` : ""}
           ${["blood", "tree"].map(m => `
           <button class="toggle ${m}" data-mode="${m}" aria-pressed="${!!modes[m] && modes[m].root === root}"
             title="${esc(t(MODES[m].help))}">
@@ -890,9 +934,13 @@ function startViewer(data) {
             <span class="sw" aria-hidden="true"></span>
             <span class="txt"><span>${t("focus")}</span><small>${esc(t("focusSub"))}</small></span>
           </button>
-        </div>`;
+        </div>
+        </details>`;
       syncPanel();
     }
+    document.getElementById("panelBody").addEventListener("toggle", ev => {
+      if (ev.target.matches("details.more")) moreOpen = ev.target.open;
+    }, true);
     document.getElementById("panelBody").addEventListener("click", ev => {
       const m = ev.target.closest("[data-mode]");
       if (m) return toggleMode(m.dataset.mode, selected);
@@ -967,11 +1015,9 @@ function startViewer(data) {
     mm.addEventListener("pointermove", ev => { if (mmDrag) minimapJump(ev); });
     mm.addEventListener("pointerup", () => { mmDrag = false; });
 
-    // ---------- start ----------
-    const home = [...people.values()].find(p => p.given.startsWith(HOME_GIVEN) && p.surname === HOME_SURNAME);
-    document.getElementById("btnHome").onclick = () => home ? select(home.id, true) : fitAll();
+    // ---------- start: whole tree, nobody preferred ----------
     document.getElementById("btnFit").onclick = () => fitAll();
-    if (home) { const n = pos(home.id); flyTo(n.x, n.y, 0.8, 0); } else fitAll(0);
+    fitAll(0);
     document.getElementById("loading").remove();
   }
 
