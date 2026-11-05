@@ -73,6 +73,9 @@
   .edge { fill: none; stroke: var(--line); stroke-width: 1.4; }
   .fam circle { fill: var(--card); stroke: var(--line); stroke-width: 1.4; }
   .fam.childless { display: none; }      /* no children: only the partnership line, no dot */
+  /* separated / divorced partners: dotted grey line, whatever highlight the couple is in */
+  .edge.divorced { stroke: var(--muted) !important; stroke-dasharray: 2 5; stroke-linecap: round; stroke-width: 2 !important; }
+  .swatch.divorced { background: repeating-linear-gradient(90deg, var(--muted) 0 3px, transparent 3px 6px); }
   .fam.unmarried circle { stroke-dasharray: 2 2; }
   .focus .person:not(.inFocus), .focus .fam:not(.inFocus) { display: none; }
   .person { cursor: pointer; }
@@ -443,6 +446,7 @@ const TEXT = {
     helpLang: "<b>Sprache</b> – Deutsch / Englisch.",
     helpDirect: "<b>Direkte Linie</b> – Eltern, Großeltern … und Kinder, Enkel … der ausgewählten Person.",
     helpPartners: "<b>Partner</b> – Rahmen und Ehelinie in Blau (Mann) bzw. Rot (Frau).",
+    helpDivorced: "<b>Getrennt / geschieden</b> – gepunktete graue Linie zwischen den Partnern.",
     helpSiblings: "<b>Geschwister</b> – abgeschwächt hervorgehoben.",
     helpCards: "<b>Karten</b> – Streifen links: blau = männlich, pink = weiblich.",
     helpNav: "<b>Bewegen & Zoomen</b> – ziehen bzw. wischen verschiebt, Mausrad bzw. zwei Finger zoomen, Klick/Tippen auf eine Karte zeigt die Details.",
@@ -498,6 +502,7 @@ const TEXT = {
     helpLang: "<b>Language</b> – German / English.",
     helpDirect: "<b>Direct line</b> – parents, grandparents … and children, grandchildren … of the selected person.",
     helpPartners: "<b>Partners</b> – frame and marriage line in blue (male) or red (female).",
+    helpDivorced: "<b>Separated / divorced</b> – dotted grey line between the partners.",
     helpSiblings: "<b>Siblings</b> – softer highlight.",
     helpCards: "<b>Cards</b> – stripe on the left: blue = male, pink = female.",
     helpNav: "<b>Move & zoom</b> – drag or swipe to move, mouse wheel or two fingers to zoom, click/tap a card for details.",
@@ -586,7 +591,7 @@ function renderHelp() {
       ${row("🩸", "helpBlood")}${row("🌳", "helpTree")}${row("👪", "helpRel")}${row(icon("btnPhotos"), "helpPhotos")}
       ${row(document.getElementById("btnTheme").innerHTML, "helpTheme")}${row(lang === "de" ? "EN" : "DE", "helpLang")}</dl>
     <h3>${t("helpColors")}</h3><dl>
-      ${row('<span class="swatch"></span>', "helpDirect")}${row('<span class="swatch spouse"></span>', "helpPartners")}
+      ${row('<span class="swatch"></span>', "helpDirect")}${row('<span class="swatch spouse"></span>', "helpPartners")}${row('<span class="swatch divorced"></span>', "helpDivorced")}
       ${row('<span class="swatch sib"></span>', "helpSiblings")}${row('<span class="swatch bloodPat"></span><span class="swatch blood"></span><span class="swatch bloodMat"></span>', "helpBlood")}
       ${row('<span class="swatch tree"></span>', "helpTree")}${row('<span class="card"></span><span class="card F"></span>', "helpCards")}</dl>
     <h3>${t("helpMap")}</h3><dl>${row("✋", "helpNav")}${row("›", "helpPanel")}</dl>`;
@@ -745,10 +750,12 @@ function startViewer(data) {
       if (e.kind === "child") { const cp = pos(e.b); return curve(fp.x, fp.y + 6, cp.x, cp.y - H / 2); }
       const ps = partnersIn(e.f, keep), hasKids = kidsIn(e.f).length > 0;
       if (ps.length === 2) {                // marriage line between the cards, then down to the dot (drawn once)
-        if (e.a !== ps[0]) return "";
         const [a, b] = ps.map(pos).sort((u, v) => u.x - v.x);
-        const line = `M${a.x + W / 2},${a.y}H${b.x - W / 2}`;
-        return hasKids ? `${line}M${fp.x},${a.y}V${fp.y - 6}` : line;   // childless: partnership line only
+        const line = `M${a.x + W / 2},${a.y}H${b.x - W / 2}`, drop = `M${fp.x},${a.y}V${fp.y - 6}`;
+        if (e.f.divorced)                   // separated: dotted partnership line (1st edge), solid drop line (2nd edge)
+          return e.a === ps[0] ? line : hasKids ? drop : "";
+        if (e.a !== ps[0]) return "";
+        return hasKids ? line + drop : line;   // childless: partnership line only
       }
       if (!hasKids) return "";              // single parent without children: nothing to connect
       const sp = pos(e.a);
@@ -812,7 +819,8 @@ function startViewer(data) {
       famSel.classed("inFocus", f => vis(f.id) && P.has(f.id)).classed("childless", f => !kidsIn(f).length)
         .filter(f => P.has(f.id))
         .attr("transform", f => `translate(${pos(f.id).x},${pos(f.id).y})`);
-      edgeSel.attr("d", edgePath);
+      edgeSel.attr("d", edgePath)
+        .classed("divorced", e => e.kind === "partner" && !!e.f.divorced && e.a === partnersIn(e.f, keep)[0]);
     }
     place();
 
