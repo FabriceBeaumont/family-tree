@@ -46,6 +46,28 @@ DETAIL_FIELDS = {
 
 YEAR_RE = re.compile(r"(\d{4})")
 
+# Photos: data/img/<ID>.<ext> (e.g. I12.jpg) or the file name Ahnenblatt links in OBJE.FILE.n.
+# They are embedded as data: URIs, so --publish encrypts them together with the rest of the data.
+IMG = ROOT / "data" / "img"
+IMG_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+PHOTO_WARN_BYTES = 300_000
+
+
+def find_photo(pid: str, row: dict[str, str]) -> Path | None:
+    candidates = [IMG / f"{pid}{ext}" for ext in IMG_TYPES]
+    for n in (1, 2, 3):
+        linked = clean(row.get(f"OBJE.FILE.{n}"))
+        if linked:  # Ahnenblatt stores absolute Windows paths from the original PC
+            candidates.append(IMG / linked.replace("\\", "/").rsplit("/", 1)[-1])
+    return next((c for c in candidates if c.is_file() and c.suffix.lower() in IMG_TYPES), None)
+
+
+def photo_uri(path: Path) -> str:
+    raw = path.read_bytes()
+    if len(raw) > PHOTO_WARN_BYTES:
+        print(f"Warning: {path.name} is {len(raw) // 1000} kB - a ~400 px wide copy is plenty for the viewer.")
+    return f"data:{IMG_TYPES[path.suffix.lower()]};base64,{base64.b64encode(raw).decode()}"
+
 
 def clean(value: str | None) -> str:
     return (value or "").strip()
@@ -92,6 +114,9 @@ def build(rows: list[dict[str, str]]) -> dict:
             p["by"] = by
         if dy:
             p["dy"] = dy
+        photo = find_photo(pid, r)
+        if photo:
+            p["photo"] = photo_uri(photo)
         people[pid] = p
 
     # Families keyed by (father, mother). Built from child->parent links first,
@@ -188,7 +213,8 @@ def main() -> None:
         (out / "data.js").write_text(
             header + "window.FAMILY_DATA = " + json.dumps(data, ensure_ascii=False) + ";\n",
             encoding="utf-8")
-    print(f"{len(data['people'])} people, {len(data['families'])} families -> {out}"
+    photos = sum(1 for p in data["people"] if "photo" in p)
+    print(f"{len(data['people'])} people, {len(data['families'])} families, {photos} photos -> {out}"
           + (" (encrypted)" if args.publish else ""))
 
 

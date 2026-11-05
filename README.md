@@ -7,7 +7,7 @@ Move around it like a map, zoom in on any branch, and click a person to see who 
 
 ## 👉 View the family tree
 
-**[Open the family tree](https://fabricebeaumont.github.io/family-tree/)**
+**[Open the family tree](https://fabricebeaumont.github.io/family-tree/?lang=en)**
 
 *Tip: Ctrl+click (Mac: Cmd+click, phone: press and hold) opens it in a new tab.*
 
@@ -65,10 +65,14 @@ a password and published with GitHub Pages.
 | `src/` | yes | `build_web.py` (CSV → viewer), `index.html` (viewer template) |
 | `public/` | yes (generated) | Password-encrypted viewer, deployed to GitHub Pages |
 | `docs/` | yes | Blank questionnaire for collecting data from relatives |
-| `data/` | **no** (private) | `ahnenblatt/` (`.ahn` + CSV export), `exports/` (HTML + PDF reports), `img/` (photos, later), `archive/` |
+| `data/` | **no** (private) | `ahnenblatt/` (`.ahn` + CSV export), `exports/` (HTML + PDF reports), `img/` (photos), `archive/` |
 | `web/` | **no** (generated) | Viewer with unencrypted data, for private sharing as a zip |
 
 `data/` and `web/` contain personal data of living people and are never committed.
+
+**Photos:** put them in `data/img/`, named after the person's Ahnenblatt ID (e.g. `I12.jpg`) or with
+the same file name Ahnenblatt links for that person. JPG, PNG and WebP work; ~400 px wide is plenty.
+The build embeds them in the data, so `--publish` encrypts them like everything else.
 
 ### Update the website after changing the tree
 

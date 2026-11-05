@@ -8,7 +8,7 @@ klicken, um mehr über sie zu erfahren.
 
 ## 👉 Stammbaum ansehen
 
-**[Stammbaum öffnen](https://fabricebeaumont.github.io/family-tree/)**
+**[Stammbaum öffnen](https://fabricebeaumont.github.io/family-tree/?lang=de)**
 
 *Tipp: Strg+Klick (Mac: Cmd+Klick, Handy: lange gedrückt halten) öffnet ihn in einem neuen Tab.*
 
