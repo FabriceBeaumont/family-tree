@@ -68,6 +68,7 @@
 
   .edge { fill: none; stroke: var(--line); stroke-width: 1.4; }
   .fam circle { fill: var(--card); stroke: var(--line); stroke-width: 1.4; }
+  .fam.childless { display: none; }      /* no children: only the partnership line, no dot */
   .fam.unmarried circle { stroke-dasharray: 2 2; }
   .focus .person:not(.inFocus), .focus .fam:not(.inFocus) { display: none; }
   .person { cursor: pointer; }
@@ -177,6 +178,7 @@
   #panel:focus { outline: none; }
   #panel h2 { margin: 0 72px 2px 0; font-size: 22px; line-height: 1.2; font-weight: 700; letter-spacing: -.02em; }
   #panel .sub { color: var(--muted); font-size: 14px; margin-bottom: 14px; font-variant-numeric: tabular-nums; }
+  #panel .sub .gen { cursor: help; }
   #panel .close { position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border: 0; border-radius: 50%;
     background: var(--fill); font-size: 18px; line-height: 1; cursor: pointer; color: var(--muted); }
   #panel .close.collapse { right: 50px; font-size: 20px; }
@@ -329,6 +331,21 @@
 <script src="data.js"></script>
 <script>
 // ---------- texts: every UI label lives here (data values such as places/notes stay as entered) ----------
+// ---------- generations by birth year: the ONE place to edit names and year ranges ----------
+// Common (Pew Research) boundaries. Birth years outside every range get no generation label.
+const GENERATIONS = [
+  { from: 1883, to: 1900, de: "Lost Generation",       en: "Lost Generation" },
+  { from: 1901, to: 1927, de: "Kriegsgeneration",   en: "Greatest Generation" },
+  { from: 1928, to: 1945, de: "Stille Generation",     en: "Silent Generation" },
+  { from: 1946, to: 1964, de: "Babyboomer",            en: "Baby Boomers" },
+  { from: 1965, to: 1980, de: "Generation X",          en: "Generation X" },
+  { from: 1981, to: 1996, de: "Millennials (Gen Y)",   en: "Millennials (Gen Y)" },
+  { from: 1997, to: 2012, de: "Generation Z",          en: "Generation Z" },
+  { from: 2013, to: 2024, de: "Generation Alpha",      en: "Generation Alpha" },
+  { from: 2025, to: 2039, de: "Generation Beta",       en: "Generation Beta" },
+];
+const generationOf = year => year ? GENERATIONS.find(g => year >= g.from && year <= g.to) || null : null;
+
 const TEXT = {
   de: {
     title: "Stammbaum Explorer", loading: "Layout wird berechnet…", layoutError: "Layout-Fehler: ",
@@ -343,6 +360,7 @@ const TEXT = {
     occupation: "Beruf", religion: "Religion", note: "Notiz",
     parents: "Eltern", partners: "Partner", children: "Kinder", siblings: "Geschwister",
     highlight: "Hervorheben", turnOff: "ausschalten",
+    generationRange: "Geburtsjahrgänge {from}–{to}",
     gens: "Generationen", genUp: "Generationen nach oben (Vorfahren), leer = alle", genDown: "Generationen nach unten (Nachkommen), leer = alle",
     gensHelp: "Begrenzt die direkte Linie der ausgewählten Person: ↑ wie viele Generationen Vorfahren, ↓ wie viele Generationen Nachkommen. Leer = alle. Mit Fokus werden nur diese Generationen gezeigt.",
     photos: "Fotos", photosHide: "Fotos ausblenden", photosShow: "Fotos einblenden",
@@ -373,6 +391,7 @@ const TEXT = {
     occupation: "Occupation", religion: "Religion", note: "Note",
     parents: "Parents", partners: "Partners", children: "Children", siblings: "Siblings",
     highlight: "Highlight", turnOff: "turn off",
+    generationRange: "Born {from}–{to}",
     gens: "Generations", genUp: "Generations up (ancestors), empty = all", genDown: "Generations down (descendants), empty = all",
     gensHelp: "Limits the selected person's direct line: ↑ how many generations of ancestors, ↓ how many generations of descendants. Empty = all. With Focus, only these generations are shown.",
     photos: "Photos", photosHide: "Hide photos", photosShow: "Show photos",
@@ -561,16 +580,19 @@ function startViewer(data) {
       const ym = (y1 + y2) / 2;
       return `M${x1},${y1}C${x1},${ym} ${x2},${ym} ${x2},${y2}`;
     }
+    const kidsIn = f => f.children.filter(c => vis(c) && P.has(c));   // children currently shown
     function edgePath(e) {
       if (!vis(e.a) || !vis(e.b) || !P.has(e.a) || !P.has(e.b)) return "";
       const fp = pos(e.f.id);
       if (e.kind === "child") { const cp = pos(e.b); return curve(fp.x, fp.y + 6, cp.x, cp.y - H / 2); }
-      const ps = partnersIn(e.f, keep);
+      const ps = partnersIn(e.f, keep), hasKids = kidsIn(e.f).length > 0;
       if (ps.length === 2) {                // marriage line between the cards, then down to the dot (drawn once)
         if (e.a !== ps[0]) return "";
         const [a, b] = ps.map(pos).sort((u, v) => u.x - v.x);
-        return `M${a.x + W / 2},${a.y}H${b.x - W / 2}M${fp.x},${a.y}V${fp.y - 6}`;
+        const line = `M${a.x + W / 2},${a.y}H${b.x - W / 2}`;
+        return hasKids ? `${line}M${fp.x},${a.y}V${fp.y - 6}` : line;   // childless: partnership line only
       }
+      if (!hasKids) return "";              // single parent without children: nothing to connect
       const sp = pos(e.a);
       return curve(sp.x, sp.y + H / 2, fp.x, fp.y - 6);
     }
@@ -628,7 +650,8 @@ function startViewer(data) {
       viewport.classed("focus", !!keep);
       personSel.classed("inFocus", p => vis(p.id)).filter(p => P.has(p.id))
         .attr("transform", p => `translate(${pos(p.id).x - W / 2},${pos(p.id).y - H / 2})`);
-      famSel.classed("inFocus", f => vis(f.id) && P.has(f.id)).filter(f => P.has(f.id))
+      famSel.classed("inFocus", f => vis(f.id) && P.has(f.id)).classed("childless", f => !kidsIn(f).length)
+        .filter(f => P.has(f.id))
         .attr("transform", f => `translate(${pos(f.id).x},${pos(f.id).y})`);
       edgeSel.attr("d", edgePath);
     }
@@ -908,7 +931,7 @@ function startViewer(data) {
         children.push(...f.children);
       }
       document.getElementById("panelBody").innerHTML = `
-        <h2>${esc(fullName(p))}</h2><div class="sub">${esc(lifeSpan(p)) || "&nbsp;"}</div>
+        <h2>${esc(fullName(p))}</h2><div class="sub">${esc(lifeSpan(p)) || "&nbsp;"}${(g => g ? ` · <span class="gen" title="${esc(t("generationRange").replace("{from}", g.from).replace("{to}", g.to))}">${esc(g[lang])}</span>` : "")(generationOf(p.by))}</div>
         ${rows.length ? `<dl>${rows.map(([k, v]) => `<dt>${t(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : ""}
         ${chipList(t("parents"), parents)}
         ${spouses ? `<h3>${t("partners")}</h3>${spouses}` : ""}
