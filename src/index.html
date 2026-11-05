@@ -29,7 +29,9 @@
     --female: #d6336c;
     --unknown: #8e8e93;
     --accent: #f08a00;        /* selection + lineage */
-    --blood: #d70015;         /* bloodline mode */
+    --blood: #d70015;         /* blood relatives on both sides */
+    --blood-pat: #9e1030;     /* father's side */
+    --blood-mat: #ff6a5c;     /* mother's side */
     --tree-line: #8a5a2b;     /* family-tree mode lines (brown) */
     --tree-bg: #2e9d4f;       /* family-tree mode card tint (green) */
     --glass: rgba(255, 255, 255, .78);
@@ -52,6 +54,8 @@
       --unknown: #8e8e93;
       --accent: #ff9f0a;
       --blood: #ff453a;
+      --blood-pat: #e0405f;
+      --blood-mat: #ff9a8f;
       --tree-line: #c08a55;
       --tree-bg: #30d158;
       --glass: rgba(36, 36, 40, .72);
@@ -101,10 +105,18 @@
   #gTree .a { stop-color: var(--tree-bg); stop-opacity: .30; }
   #gTree .b { stop-color: var(--tree-bg); stop-opacity: 0; }
   .person.blood rect.card { fill: url(#gBlood); }
+  .person.blood.bloodPat rect.card { fill: url(#gBloodPat); }
+  .person.blood.bloodMat rect.card { fill: url(#gBloodMat); }
   .edge.blood { stroke: var(--blood); stroke-width: 2.4; }
+  .edge.blood.bloodPat { stroke: var(--blood-pat); }
+  .edge.blood.bloodMat { stroke: var(--blood-mat); }
   .fam.blood circle { stroke: var(--blood); }
   #gBlood .a { stop-color: var(--blood); stop-opacity: .30; }
   #gBlood .b { stop-color: var(--blood); stop-opacity: 0; }
+  #gBloodPat .a { stop-color: var(--blood-pat); stop-opacity: .32; }
+  #gBloodPat .b { stop-color: var(--blood-pat); stop-opacity: 0; }
+  #gBloodMat .a { stop-color: var(--blood-mat); stop-opacity: .38; }
+  #gBloodMat .b { stop-color: var(--blood-mat); stop-opacity: 0; }
   .dimmed .edge.hl { stroke: var(--accent); stroke-width: 2.4; }
   /* secondary highlights of the selected person: partners (by sex colour), siblings (30 % accent) */
   .person.spouse rect.card { stroke-width: 2.5; stroke: var(--unknown); }
@@ -133,6 +145,8 @@
   .far .person.F rect.card { fill: var(--female); }
   .far .person.tree rect.card { fill: var(--tree-bg); }
   .far .person.blood rect.card { fill: var(--blood); }
+  .far .person.blood.bloodPat rect.card { fill: var(--blood-pat); }
+  .far .person.blood.bloodMat rect.card { fill: var(--blood-mat); }
   .far .person.selected rect.card { fill: var(--accent); }
   .edge, .fam circle { vector-effect: non-scaling-stroke; }
 
@@ -293,6 +307,8 @@
   .swatch.spouse { background: linear-gradient(90deg, var(--male) 50%, var(--female) 50%); }
   .swatch.sib { background: color-mix(in srgb, var(--accent) 30%, var(--line)); }
   .swatch.blood { background: var(--blood); }
+  .swatch.bloodPat { background: var(--blood-pat); }
+  .swatch.bloodMat { background: var(--blood-mat); }
   .swatch.tree { background: var(--tree-line); }
   /* collapsible highlight settings */
   details.more { margin-top: 14px; }
@@ -327,7 +343,7 @@
   <symbol id="pic-U" viewBox="0 0 40 40"><circle cx="20" cy="15" r="7.5"/><path d="M5 40c0-10 6.5-15.5 15-15.5S35 30 35 40z"/></symbol>
   <symbol id="pic-M" viewBox="0 0 40 40"><circle cx="20" cy="15.5" r="7.5"/><path d="M12.2 14.5c0-6 3.6-8.6 7.8-8.6s7.8 2.6 7.8 8.6c-1.4-2.6-4.4-3.6-7.8-3.6s-6.4 1-7.8 3.6z"/><path d="M3 40c0-10 7-15 17-15s17 5 17 15z"/></symbol>
   <symbol id="pic-F" viewBox="0 0 40 40"><path d="M20 6.5c-5.6 0-9 4-9 9.5 0 4.4-.8 8-2.6 10.6 2.6 1 5.2 1.2 7.4.8L20 26l4.2 1.4c2.2.4 4.8.2 7.4-.8-1.8-2.6-2.6-6.2-2.6-10.6 0-5.5-3.4-9.5-9-9.5z"/><path d="M7 40c0-9 5.6-13.5 13-13.5S33 31 33 40z"/></symbol>
-<linearGradient id="gBlood"><stop class="a" offset="0"/><stop class="b" offset="1"/></linearGradient><linearGradient id="gTree"><stop class="a" offset="0"/><stop class="b" offset="1"/></linearGradient></defs><g id="viewport"><g id="edges"></g><g id="fams"></g><g id="people"></g></g></svg>
+<linearGradient id="gBlood"><stop class="a" offset="0"/><stop class="b" offset="1"/></linearGradient><linearGradient id="gBloodPat"><stop class="a" offset="0"/><stop class="b" offset="1"/></linearGradient><linearGradient id="gBloodMat"><stop class="a" offset="0"/><stop class="b" offset="1"/></linearGradient><linearGradient id="gTree"><stop class="a" offset="0"/><stop class="b" offset="1"/></linearGradient></defs><g id="viewport"><g id="edges"></g><g id="fams"></g><g id="people"></g></g></svg>
 <div id="loading" data-i18n="loading">Layout wird berechnet…</div>
 <div id="lock" hidden>
   <form id="lockForm">
@@ -418,7 +434,7 @@ const TEXT = {
     helpFit: "<b>Alles</b> – zeigt den ganzen Baum und hebt die Auswahl auf (nur hier).",
     helpGens: "<b>Generationen</b> – ↑ wie viele Generationen Vorfahren, ↓ wie viele Nachkommen; leer = alle.",
     helpFocus: "<b>Fokus</b> – blendet alle nicht hervorgehobenen Personen aus und ordnet den Rest neu an.",
-    helpBlood: "<b>Blutlinie</b> – der am weitesten zurückliegende Vorfahre der ausgewählten Person und alle seine Nachkommen (rot).",
+    helpBlood: "<b>Blutsverwandte</b> – alle Vorfahren der ausgewählten Person und deren Nachkommen; dunkelrot = Vaterseite, hellrot = Mutterseite, rot = beide.",
     helpTree: "<b>Gesamter Stammbaum</b> – die Blutlinie plus alle Vorfahren ihrer Mitglieder (grün/braun).",
     helpRel: "<b>Verwandtschaft</b> – schreibt unter jede Karte, wie die Person mit der ausgewählten verwandt ist; (n) = Anzahl der Verbindungen.",
     helpPhotos: "<b>Fotos</b> – Fotos bzw. Platzhalter-Figuren ein- oder ausblenden.",
@@ -441,8 +457,9 @@ const TEXT = {
     spouseLegendHelp: "Alle Partner der ausgewählten Person (Ehe oder Partnerschaft). Die Farbe zeigt das Geschlecht des Partners. Ihre eigenen Vorfahren werden nicht hervorgehoben.",
     sibLegend: "Geschwister", sibLegendSub: "Abgeschwächt (30 % der Linienfarbe)",
     sibLegendHelp: "Kinder desselben Elternpaares wie die ausgewählte Person. Halbgeschwister aus anderen Ehen eines Elternteils gehören nicht dazu.",
-    bloodline: "Blutlinie", bloodlineSub: "Nachkommen des am weitesten zurückliegenden Vorfahren ({name})",
-    bloodlineHelp: "Ausgehend von der ausgewählten Person wird der Vorfahre gesucht, der die meisten Generationen zurückliegt (bei Gleichstand: frühestes Geburtsjahr). Hervorgehoben werden dieser Vorfahre und alle seine Nachkommen. Eingeheiratete Partner zählen nicht dazu.",
+    bloodline: "Blutsverwandte", bloodlineSub: "{name}: {n} Personen (Vaterseite {p}, Mutterseite {m})",
+    bloodlineHelp: "Alle Blutsverwandten der ausgewählten Person: ihre Vorfahren und alle deren Nachkommen, auf Vater- und Mutterseite. Dunkelrot = Vaterseite, hellrot = Mutterseite, rot = beide Seiten (Geschwister, eigene Nachkommen). Angeheiratete gehören nicht dazu.",
+    fatherSide: "Vaterseite", motherSide: "Mutterseite",
     familyTree: "Gesamter Stammbaum", familyTreeSub: "Blutlinie plus alle Vorfahren ihrer Mitglieder ({name})",
     familyTreeHelp: "Wie die Blutlinie (der am weitesten zurückliegende Vorfahre und alle seine Nachkommen), zusätzlich mit allen Vorfahren dieser Personen – also auch eingeheiratete Partner mit Kindern in der Linie und deren Eltern, Großeltern usw. Kinderlose Partner zählen nicht dazu.",
   },
@@ -472,7 +489,7 @@ const TEXT = {
     helpFit: "<b>All</b> – shows the whole tree and clears the selection (only here).",
     helpGens: "<b>Generations</b> – ↑ how many generations of ancestors, ↓ how many of descendants; empty = all.",
     helpFocus: "<b>Focus</b> – hides everyone who is not highlighted and rearranges the rest.",
-    helpBlood: "<b>Bloodline</b> – the selected person's furthest ancestor and all of their descendants (red).",
+    helpBlood: "<b>Blood relatives</b> – all ancestors of the selected person and their descendants; dark red = father's side, light red = mother's side, red = both.",
     helpTree: "<b>Whole family tree</b> – the bloodline plus all ancestors of its members (green/brown).",
     helpRel: "<b>Relationship</b> – writes under each card how the person is related to the selected one; (n) = number of links.",
     helpPhotos: "<b>Photos</b> – show or hide photos and placeholder figures.",
@@ -495,8 +512,9 @@ const TEXT = {
     spouseLegendHelp: "Every partner of the selected person (marriage or partnership). The colour shows the partner's sex. Their own ancestors are not highlighted.",
     sibLegend: "Siblings", sibLegendSub: "Softened (30 % of the line colour)",
     sibLegendHelp: "Children of the same pair of parents as the selected person. Half-siblings from a parent's other marriages are not included.",
-    bloodline: "Bloodline", bloodlineSub: "Descendants of the furthest ancestor ({name})",
-    bloodlineHelp: "Starting from the selected person, finds the ancestor the most generations back (if tied: earliest birth year). Highlights that ancestor and all of their descendants. Partners who married in are not included.",
+    bloodline: "Blood relatives", bloodlineSub: "{name}: {n} people (father's side {p}, mother's side {m})",
+    bloodlineHelp: "All blood relatives of the selected person: their ancestors and all of those ancestors' descendants, on the father's and the mother's side. Dark red = father's side, light red = mother's side, red = both (siblings, own descendants). In-laws are not included.",
+    fatherSide: "father's side", motherSide: "mother's side",
     familyTree: "Whole family tree", familyTreeSub: "Bloodline plus all ancestors of its members ({name})",
     familyTreeHelp: "Like the bloodline (the furthest ancestor and all of their descendants), plus every ancestor of those people – so partners who married in and had children in the line are included, with their parents, grandparents and so on. Childless partners are not included.",
   },
@@ -568,7 +586,7 @@ function renderHelp() {
       ${row(document.getElementById("btnTheme").innerHTML, "helpTheme")}${row(lang === "de" ? "EN" : "DE", "helpLang")}</dl>
     <h3>${t("helpColors")}</h3><dl>
       ${row('<span class="swatch"></span>', "helpDirect")}${row('<span class="swatch spouse"></span>', "helpPartners")}
-      ${row('<span class="swatch sib"></span>', "helpSiblings")}${row('<span class="swatch blood"></span>', "helpBlood")}
+      ${row('<span class="swatch sib"></span>', "helpSiblings")}${row('<span class="swatch bloodPat"></span><span class="swatch blood"></span><span class="swatch bloodMat"></span>', "helpBlood")}
       ${row('<span class="swatch tree"></span>', "helpTree")}${row('<span class="card"></span><span class="card F"></span>', "helpCards")}</dl>
     <h3>${t("helpMap")}</h3><dl>${row("✋", "helpNav")}${row("›", "helpPanel")}</dl>`;
 }
@@ -866,36 +884,35 @@ function startViewer(data) {
       }
     }
     setupGenInputs();
-    // Oldest ancestor = the ancestor most generations up; ties -> earliest known birth year.
-    function oldestAncestor(id) {
-      let best = id, bestDepth = 0;
-      const seen = new Set([id]), queue = [[id, 0]];
-      while (queue.length) {
-        const [pid, d] = queue.shift();
-        const better = d > bestDepth || (d === bestDepth && (people.get(pid).by || 9999) < (people.get(best).by || 9999));
-        if (better) { best = pid; bestDepth = d; }
-        const f = people.get(pid).parentFam && fams.get(people.get(pid).parentFam);
-        if (f) for (const s of [f.husband, f.wife]) if (s && !seen.has(s)) { seen.add(s); queue.push([s, d + 1]); }
-      }
-      return best;
+    // ---------- blood relatives: everyone who shares at least one ancestor with ego ----------
+    const parentIds = id => { const f = people.get(id).parentFam && fams.get(people.get(id).parentFam); return f ? [f.husband, f.wife].filter(Boolean) : []; };
+    function ancestorsOf(id) {                       // all ancestors, without id itself
+      const out = new Set(), stack = [id];
+      while (stack.length) for (const p of parentIds(stack.pop())) if (!out.has(p)) { out.add(p); stack.push(p); }
+      return out;
     }
-    // Bloodline = the ancestor and everyone descended from them (+ the family dots in between).
-    function bloodline(root) {
-      const set = new Set([root]), stack = [root];
-      while (stack.length) {
-        for (const f of people.get(stack.pop()).spouseFams) {
-          const fm = fams.get(f);
-          if (!fm.children.length) continue;
-          set.add(f);
-          for (const c of fm.children) if (!set.has(c)) { set.add(c); stack.push(c); }
-        }
-      }
+    function descendantsOf(roots) {                  // the roots plus everyone descended from them
+      const out = new Set(roots), stack = [...roots];
+      while (stack.length) for (const fid of people.get(stack.pop()).spouseFams)
+        for (const c of fams.get(fid).children) if (!out.has(c)) { out.add(c); stack.push(c); }
+      return out;
+    }
+    const withFamilyDots = set => {                  // + the dots of families inside the set
+      for (const f of fams.values()) if (partnersIn(f, set).length && f.children.some(c => set.has(c))) set.add(f.id);
       return set;
+    };
+    // Blood relatives of ego, plus which side they are on (father's / mother's; both = siblings, descendants).
+    function bloodRelatives(ego) {
+      const side = parent => parent ? descendantsOf([parent, ...ancestorsOf(parent)]) : new Set();
+      const pf = people.get(ego).parentFam && fams.get(people.get(ego).parentFam);
+      const pat = side(pf && pf.husband), mat = side(pf && pf.wife);
+      const set = withFamilyDots(descendantsOf([ego, ...ancestorsOf(ego)]));
+      return { set, pat, mat };
     }
 
     // Whole tree = bloodline plus all ancestors of everyone in it (brings in married-in partners' lines).
-    function familyTree(root) {
-      const set = bloodline(root);
+    function familyTree(ego) {
+      const set = new Set(bloodRelatives(ego).set);
       const stack = [...set].filter(id => people.has(id));
       while (stack.length) {
         const f = people.get(stack.pop()).parentFam;
@@ -909,10 +926,13 @@ function startViewer(data) {
 
     // Highlight modes, drawn bottom to top (bloodline over tree).
     const MODES = {
-      tree: { label: "familyTree", help: "familyTreeHelp", sub: "familyTreeSub", compute: familyTree },
-      blood: { label: "bloodline", help: "bloodlineHelp", sub: "bloodlineSub", compute: bloodline },
+      tree: { label: "familyTree", help: "familyTreeHelp", sub: "familyTreeSub", compute: ego => ({ set: familyTree(ego) }) },
+      blood: { label: "bloodline", help: "bloodlineHelp", sub: "bloodlineSub", compute: bloodRelatives },
     };
-    const modes = { tree: null, blood: null };   // name -> { root, set } while switched on
+    // name -> { ego, set, ... } while switched on; follows the selected person, keeps the last one after ⤢
+    const modes = { tree: null, blood: null };
+    const modeFor = (m, ego) => ({ ego, ...MODES[m].compute(ego) });
+    const countPeople = set => [...set].filter(id => people.has(id)).length;
     const EMPTY = new Set();
     // ---------- kinship: how is a person related to the selected one ("ego")? ----------
     // Blood relatives via the nearest common ancestor: a = generations up from ego, b = down to the person.
@@ -1037,11 +1057,11 @@ function startViewer(data) {
       return off;
     }
     // Bloodline / whole tree cut to the ↑/↓ generation limits, counted from the selected person
-    // (or from the furthest ancestor when nobody is selected).
+    // (or from the person the highlight was made for when nobody is selected).
     function limitedSet(m) {
       const full = modes[m].set;
       if (genUp === null && genDown === null) return full;
-      const off = generationOffsets(selected || modes[m].root);
+      const off = generationOffsets(selected || modes[m].ego);
       const ok = id => { const g = off.get(id);
         return g !== undefined && (genUp === null || g >= -genUp) && (genDown === null || g <= genDown); };
       const out = new Set();
@@ -1053,6 +1073,8 @@ function startViewer(data) {
     }
 
     function applyHighlight() {
+      for (const m of Object.keys(MODES))            // highlights follow the selected person
+        if (modes[m] && selected && modes[m].ego !== selected) modes[m] = modeFor(m, selected);
       const sel = selected ? lineage(selected) : EMPTY;
       const on = Object.keys(MODES).filter(m => modes[m]);
       const eff = Object.fromEntries(on.map(m => [m, limitedSet(m)]));      // what is actually shown
@@ -1090,15 +1112,21 @@ function startViewer(data) {
         personSel.classed(m, p => set.has(p.id));
         famSel.classed(m, f => set.has(f.id));
         edgeSel.classed(m, e => set.has(e.a) && set.has(e.b));
-        // header toggle: tooltip names the furthest ancestor it would use (or uses)
+        // header toggle: tooltip says for whom and how many people
         const btn = document.getElementById("btn-" + m);
-        const root = modes[m] ? modes[m].root : selected ? oldestAncestor(selected) : null;
         btn.setAttribute("aria-pressed", !!modes[m]);
         btn.setAttribute("aria-disabled", !modes[m] && !selected);
-        btn.title = [t(MODES[m].label), root ? t(MODES[m].sub).replace("{name}", nameYear(root)) : "",
+        btn.title = [t(MODES[m].label), modes[m] ? modeSummary(m) : selected ? fullName(people.get(selected)) : "",
           "", t(MODES[m].help), !modes[m] && !selected ? "\n" + t("selectFirst") : ""].filter((x, i) => x || i === 2).join("\n");
         btn.ariaLabel = t(MODES[m].label);
       }
+      // father's / mother's side shading inside the blood relatives
+      const B = modes.blood, bset = B ? eff.blood : EMPTY;
+      const onlyPat = id => B && bset.has(id) && B.pat.has(id) && !B.mat.has(id);
+      const onlyMat = id => B && bset.has(id) && B.mat.has(id) && !B.pat.has(id);
+      personSel.classed("bloodPat", p => onlyPat(p.id)).classed("bloodMat", p => onlyMat(p.id));
+      edgeSel.classed("bloodPat", e => onlyPat(e.a === e.f.id ? e.b : e.a) && (people.has(e.b) ? onlyPat(e.b) : true))
+        .classed("bloodMat", e => onlyMat(e.a === e.f.id ? e.b : e.a) && (people.has(e.b) ? onlyMat(e.b) : true));
       document.getElementById("btnFocus").setAttribute("aria-pressed", focusOn);
       // legend next to the navigation hint: only what is visible right now
       const item = (cls, label, help) => `<span class="item" title="${esc(help)}"><span class="swatch ${cls}" aria-hidden="true"></span>${esc(label)}</span>`;
@@ -1106,8 +1134,9 @@ function startViewer(data) {
         sp ? item("", t("directLine"), t("directLineSub").replace("{name}", fullName(sp)) + "\n\n" + t("directLineHelp")) : "",
         spouses.size ? item("spouse", t("spouseLegend"), t("spouseLegendSub") + "\n\n" + t("spouseLegendHelp")) : "",
         sibs.size ? item("sib", t("sibLegend"), t("sibLegendSub") + "\n\n" + t("sibLegendHelp")) : "",
-        modes.blood ? item("blood", t("bloodline"), nameYear(modes.blood.root) + "\n\n" + t("bloodlineHelp")) : "",
-        modes.tree ? item("tree", t("familyTree"), nameYear(modes.tree.root) + "\n\n" + t("familyTreeHelp")) : "",
+        modes.blood ? item("bloodPat", t("fatherSide"), modeSummary("blood") + "\n\n" + t("bloodlineHelp")) : "",
+        modes.blood ? item("bloodMat", t("motherSide"), modeSummary("blood") + "\n\n" + t("bloodlineHelp")) : "",
+        modes.tree ? item("tree", t("familyTree"), modeSummary("tree") + "\n\n" + t("familyTreeHelp")) : "",
       ].join("");
       applyRelations();
       if (focusOn) refocus();
@@ -1150,18 +1179,19 @@ function startViewer(data) {
       svg.transition().duration(ms).call(zoom.transform,
         d3.zoomIdentity.translate(cx - (x0 + x1) / 2 * k, cy - (y0 + y1) / 2 * k).scale(k));
     }
+    function modeSummary(m) {                       // "Fabrice Beaumont: 308 Personen (Vaterseite 199, Mutterseite 111)"
+      const M = modes[m], n = countPeople(limitedSet(m));
+      return t(MODES[m].sub).replace("{name}", fullName(people.get(M.ego))).replace("{n}", n)
+        .replace("{p}", M.pat ? countPeople(M.pat) - 0 : "").replace("{m}", M.mat ? countPeople(M.mat) : "");
+    }
     function toggleMode(m, personId) {
-      const root = oldestAncestor(personId);
-      if (modes[m] && modes[m].root === root) modes[m] = null;
-      else modes[m] = { root, set: MODES[m].compute(root) };
+      modes[m] = modes[m] ? null : modeFor(m, personId);
       applyHighlight();
       if (selected) showPanel(people.get(selected));
       if (modes[m] && !focusOn) fitSet(limitedSet(m));  // respects ↑/↓; in Fokus mode refocus() fits
     }
     for (const m of Object.keys(MODES)) document.getElementById("btn-" + m).onclick = () => {
-      if (modes[m] && (!selected || modes[m].root === oldestAncestor(selected))) {   // switch off
-        modes[m] = null; applyHighlight(); if (selected) showPanel(people.get(selected));
-      } else if (selected) toggleMode(m, selected);                                   // on / other ancestor
+      if (modes[m] || selected) toggleMode(m, selected || modes[m].ego);              // on / off
     };
 
     // Panel state: open, or collapsed to a tab while the person stays selected.
