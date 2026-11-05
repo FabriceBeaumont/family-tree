@@ -165,6 +165,24 @@
   .gens input:hover, .gens input:focus { background: var(--fill); outline: none; }
   .gens input:focus-visible { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent); }
   .gens input:not(:placeholder-shown) { color: var(--accent); font-weight: 700; }
+  .gens .sep { width: 1px; height: 22px; background: var(--glass-stroke); margin: 0 4px; }
+  #btnFocus { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 8px; border: 0; border-radius: 8px;
+    background: transparent; color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  #btnFocus svg { width: 15px; height: 15px; }
+  #btnFocus:hover { background: var(--fill); }
+  #btnFocus[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  #btnFocus:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 60%, transparent); }
+  /* bloodline / whole-tree toggles: emoji buttons like the theme button, coloured when on */
+  .modeBtn { width: 40px; padding: 0; justify-content: center; font-size: 18px; }
+  /* tinted, not solid: a red drop on solid red would vanish */
+  .modeBtn[aria-pressed="true"].blood { background: color-mix(in srgb, var(--blood) 35%, var(--card)); border: 2px solid var(--blood); }
+  .modeBtn[aria-pressed="true"].tree { background: color-mix(in srgb, var(--tree-bg) 35%, var(--card)); border: 2px solid var(--tree-bg); }
+  .modeBtn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+  /* legend next to the navigation hint */
+  #hint { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; right: 16px; }
+  #legend { display: contents; }
+  #legend .item { display: inline-flex; align-items: center; gap: 6px; cursor: help; }
+  #legend .swatch { transform: none; }
   .btn:hover { background: color-mix(in srgb, var(--glass) 85%, var(--accent)); }
   .btn[aria-pressed="true"] { color: var(--accent); }
   .btn:focus-visible, .chip:focus-visible, .toggle:focus-visible, #panel .close:focus-visible, #panelTab:focus-visible {
@@ -208,7 +226,8 @@
 
   #minimap { position: fixed; left: 12px; bottom: 12px; width: 220px; height: 150px;
     border-radius: var(--radius); cursor: crosshair; }
-  #hint { position: fixed; left: 244px; bottom: 16px; font-size: 12px; color: var(--muted); }
+  #hint { position: fixed; left: 244px; bottom: 16px; font-size: 12px; color: var(--muted); pointer-events: none; }
+  #hint #legend .item { pointer-events: auto; }
   #loading { position: fixed; inset: 0; display: grid; place-items: center; font-size: 17px; color: var(--muted); }
   #loading[hidden], #lock[hidden] { display: none; }
   #lock { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: var(--bg); padding: 16px; }
@@ -226,14 +245,6 @@
   #prefs .btn { width: 40px; padding: 0; justify-content: center; font-size: 13px; font-weight: 600; }
   #prefs .btn svg { width: 18px; height: 18px; }
   #topbar { right: 108px; }
-  .modePill { color: #fff; border: 0; }
-  .modePill.blood { background: var(--blood); }
-  .modePill.tree { background: var(--tree-line); }
-  .modePill.focus { background: var(--ink); color: var(--card); }
-  :root[data-theme="dark"] .modePill { color: #000; }
-  :root[data-theme="dark"] .modePill.focus { color: var(--card); }  /* white on #c08a55 is only 2.6:1 */
-  .modePill .x { font-size: 16px; line-height: 1; opacity: .85; }
-  .modePill[hidden] { display: none; }
   .toggles { display: grid; gap: 8px; }
   .toggle { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; cursor: pointer;
     background: var(--fill); color: var(--ink); border-radius: var(--radius); padding: 10px 12px; font: inherit; font-size: 14px; }
@@ -310,17 +321,18 @@
   <div class="gens glass" role="group" data-i18n-attr="title:gensHelp;aria-label:gens">
     <label><span aria-hidden="true">↑</span><input id="genUp" type="number" min="0" max="99" inputmode="numeric" placeholder="∞" data-i18n-attr="aria-label:genUp"></label>
     <label><span aria-hidden="true">↓</span><input id="genDown" type="number" min="0" max="99" inputmode="numeric" placeholder="∞" data-i18n-attr="aria-label:genDown"></label>
+    <span class="sep" aria-hidden="true"></span>
+    <button type="button" id="btnFocus" aria-pressed="false" data-i18n-attr="title:focusHelp"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="5.6"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg><span data-i18n="focus">Fokus</span></button>
   </div>
+  <button type="button" class="btn glass modeBtn blood" id="btn-blood" aria-pressed="false"><span aria-hidden="true">🩸</span></button>
+  <button type="button" class="btn glass modeBtn tree" id="btn-tree" aria-pressed="false"><span aria-hidden="true">🌳</span></button>
   <button class="btn glass" id="btnPhotos" aria-pressed="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.6"/><circle cx="8" cy="6.4" r="2.2"/><path d="M3.9 12.7c.8-1.8 2.3-2.7 4.1-2.7s3.3.9 4.1 2.7"/></svg><span class="lbl" data-i18n="photos">Fotos</span></button>
-  <button class="btn modePill focus" id="pill-focus" hidden></button>
-  <button class="btn modePill tree" id="pill-tree" hidden></button>
-  <button class="btn modePill blood" id="pill-blood" hidden></button>
 </div>
 
 <aside id="panel" class="glass" tabindex="-1" aria-label="Details" data-i18n-attr="aria-label:details"><button class="close collapse" id="panelCollapse" aria-label="Einklappen" data-i18n-attr="aria-label:collapse;title:collapse">›</button><button class="close" id="panelClose" aria-label="Schließen" data-i18n-attr="aria-label:close;title:close">×</button><div id="panelBody"></div></aside>
 <button id="panelTab" class="glass" type="button" hidden><span class="grab" aria-hidden="true"></span><span class="chev" aria-hidden="true">‹</span><span class="name"></span></button>
 <canvas id="minimap" class="glass" aria-label="Übersichtskarte" data-i18n-attr="aria-label:minimap"></canvas>
-<div id="hint" data-i18n="hint">Ziehen = verschieben · Mausrad = zoomen · Klick = Details &amp; Linie</div>
+<div id="hint"><span data-i18n="hint">Ziehen = verschieben · Mausrad = zoomen · Klick = Details &amp; Linie</span><span id="legend"></span></div>
 <div id="prefs">
   <button type="button" class="btn glass" id="btnTheme"></button>
   <button type="button" class="btn glass" id="btnLang"></button>
@@ -364,6 +376,7 @@ const TEXT = {
     gens: "Generationen", genUp: "Generationen nach oben (Vorfahren), leer = alle", genDown: "Generationen nach unten (Nachkommen), leer = alle",
     gensHelp: "Begrenzt die direkte Linie der ausgewählten Person: ↑ wie viele Generationen Vorfahren, ↓ wie viele Generationen Nachkommen. Leer = alle. Mit Fokus werden nur diese Generationen gezeigt.",
     photos: "Fotos", photosHide: "Fotos ausblenden", photosShow: "Fotos einblenden",
+    selectFirst: "Zuerst eine Person auswählen.",
     focus: "Fokus", focusSub: "Nur hervorgehobene Personen zeigen und neu anordnen",
     focusHelp: "Blendet alle nicht hervorgehobenen Personen aus und ordnet die übrigen neu an, als wären sie allein im Stammbaum. Berücksichtigt die direkte Linie, Partner und Geschwister sowie eingeschaltete Blutlinie / Gesamter Stammbaum. Ausschalten zeigt wieder alle.",
     toDark: "Dunkles Design", toLight: "Helles Design", otherLang: "Switch to English",
@@ -395,6 +408,7 @@ const TEXT = {
     gens: "Generations", genUp: "Generations up (ancestors), empty = all", genDown: "Generations down (descendants), empty = all",
     gensHelp: "Limits the selected person's direct line: ↑ how many generations of ancestors, ↓ how many generations of descendants. Empty = all. With Focus, only these generations are shown.",
     photos: "Photos", photosHide: "Hide photos", photosShow: "Show photos",
+    selectFirst: "Select a person first.",
     focus: "Focus", focusSub: "Show only highlighted people, rearranged",
     focusHelp: "Hides everyone who is not highlighted and rearranges the rest as if they were alone in the family tree. Uses the direct line, partners and siblings, plus Bloodline / Whole family tree when switched on. Turning it off shows everyone again.",
     toDark: "Dark appearance", toLight: "Light appearance", otherLang: "Auf Deutsch umschalten",
@@ -798,20 +812,25 @@ function startViewer(data) {
         personSel.classed(m, p => set.has(p.id));
         famSel.classed(m, f => set.has(f.id));
         edgeSel.classed(m, e => set.has(e.a) && set.has(e.b));
-        const pill = document.getElementById("pill-" + m);
-        pill.hidden = !modes[m];
-        if (modes[m]) {
-          const label = `${t(MODES[m].label)}: ${fullName(people.get(modes[m].root))}`;
-          pill.innerHTML = `<span>${esc(label)}</span><span class="x" aria-hidden="true">×</span>`;
-          pill.title = `${label} – ${t("turnOff")}\n\n${t(MODES[m].help)}`;
-          pill.ariaLabel = `${label} – ${t("turnOff")}`;
-        }
+        // header toggle: tooltip names the furthest ancestor it would use (or uses)
+        const btn = document.getElementById("btn-" + m);
+        const root = modes[m] ? modes[m].root : selected ? oldestAncestor(selected) : null;
+        btn.setAttribute("aria-pressed", !!modes[m]);
+        btn.setAttribute("aria-disabled", !modes[m] && !selected);
+        btn.title = [t(MODES[m].label), root ? t(MODES[m].sub).replace("{name}", nameYear(root)) : "",
+          "", t(MODES[m].help), !modes[m] && !selected ? "\n" + t("selectFirst") : ""].filter((x, i) => x || i === 2).join("\n");
+        btn.ariaLabel = t(MODES[m].label);
       }
-      const fp = document.getElementById("pill-focus");
-      fp.hidden = !focusOn;
-      fp.innerHTML = `<span>${esc(t("focus"))}</span><span class="x" aria-hidden="true">×</span>`;
-      fp.title = `${t("focus")} – ${t("turnOff")}\n\n${t("focusHelp")}`;
-      fp.ariaLabel = `${t("focus")} – ${t("turnOff")}`;
+      document.getElementById("btnFocus").setAttribute("aria-pressed", focusOn);
+      // legend next to the navigation hint: only what is visible right now
+      const item = (cls, label, help) => `<span class="item" title="${esc(help)}"><span class="swatch ${cls}" aria-hidden="true"></span>${esc(label)}</span>`;
+      document.getElementById("legend").innerHTML = [
+        sp ? item("", t("directLine"), t("directLineSub").replace("{name}", fullName(sp)) + "\n\n" + t("directLineHelp")) : "",
+        spouses.size ? item("spouse", t("spouseLegend"), t("spouseLegendSub") + "\n\n" + t("spouseLegendHelp")) : "",
+        sibs.size ? item("sib", t("sibLegend"), t("sibLegendSub") + "\n\n" + t("sibLegendHelp")) : "",
+        modes.blood ? item("blood", t("bloodline"), nameYear(modes.blood.root) + "\n\n" + t("bloodlineHelp")) : "",
+        modes.tree ? item("tree", t("familyTree"), nameYear(modes.tree.root) + "\n\n" + t("familyTreeHelp")) : "",
+      ].join("");
       if (focusOn) refocus();
     }
 
@@ -840,7 +859,7 @@ function startViewer(data) {
       if (!on) refocus();
       if (selected) showPanel(people.get(selected));
     }
-    document.getElementById("pill-focus").onclick = () => setFocus(false);
+    document.getElementById("btnFocus").onclick = () => setFocus(!focusOn);
     function fitSet(set, ms = 750) {
       const pts = [...set].filter(id => people.has(id) && P.has(id)).map(pos);
       if (!pts.length) return;
@@ -862,8 +881,10 @@ function startViewer(data) {
       if (selected) showPanel(people.get(selected));
       if (modes[m] && !focusOn) fitSet(modes[m].set);   // in Fokus mode refocus() fits the view
     }
-    for (const m of Object.keys(MODES)) document.getElementById("pill-" + m).onclick = () => {
-      modes[m] = null; applyHighlight(); if (selected) showPanel(people.get(selected));
+    for (const m of Object.keys(MODES)) document.getElementById("btn-" + m).onclick = () => {
+      if (modes[m] && (!selected || modes[m].root === oldestAncestor(selected))) {   // switch off
+        modes[m] = null; applyHighlight(); if (selected) showPanel(people.get(selected));
+      } else if (selected) toggleMode(m, selected);                                   // on / other ancestor
     };
 
     // Panel state: open, or collapsed to a tab while the person stays selected.
@@ -907,9 +928,6 @@ function startViewer(data) {
     const chipList = (title, ids) => ids.length ? `<h3>${title}</h3><div class="chips">${ids.map(chip).join("")}</div>` : "";
 
     const nameYear = id => { const q = people.get(id); return fullName(q) + (q.by ? ", * " + q.by : ""); };
-    let moreOpen = false;                   // remembered while switching people
-    const legendItem = (cls, label, sub, help) =>
-      `<li title="${esc(help)}"><span class="swatch ${cls}" aria-hidden="true"></span><span><b>${esc(label)}</b> · ${esc(sub)}</span></li>`;
     function showPanel(p) {
       const rows = [
         ["callName", p.callName], ["born", [p.birthDate, p.birthPlace].filter(Boolean).join(t("in"))],
@@ -918,7 +936,6 @@ function startViewer(data) {
         ["buried", [p.burialDate, p.burialPlace].filter(Boolean).join(t("in"))],
         ["occupation", p.occupation], ["religion", p.religion], ["note", p.note],
       ].filter(r => r[1]);
-      const root = oldestAncestor(p.id);
       const pf = p.parentFam && fams.get(p.parentFam);
       const parents = pf ? [pf.husband, pf.wife].filter(Boolean) : [];
       const siblings = pf ? pf.children.filter(c => c !== p.id) : [];
@@ -936,38 +953,10 @@ function startViewer(data) {
         ${chipList(t("parents"), parents)}
         ${spouses ? `<h3>${t("partners")}</h3>${spouses}` : ""}
         ${chipList(t("children"), children)}
-        ${chipList(`${t("siblings")} (${siblings.length})`, siblings)}
-        <ul class="legend">
-          ${legendItem("", t("directLine"), t("directLineSub").replace("{name}", fullName(p)), t("directLineHelp"))}
-          ${spouses ? legendItem("spouse", t("spouseLegend"), t("spouseLegendSub"), t("spouseLegendHelp")) : ""}
-          ${siblings.length ? legendItem("sib", t("sibLegend"), t("sibLegendSub"), t("sibLegendHelp")) : ""}
-          ${modes.blood ? legendItem("blood", t("bloodline"), fullName(people.get(modes.blood.root)), t("bloodlineHelp")) : ""}
-          ${modes.tree ? legendItem("tree", t("familyTree"), fullName(people.get(modes.tree.root)), t("familyTreeHelp")) : ""}
-        </ul>
-        <details class="more" ${moreOpen ? "open" : ""}>
-          <summary>${t("highlight")}</summary>
-        <div class="toggles">
-          ${["blood", "tree"].map(m => `
-          <button class="toggle ${m}" data-mode="${m}" aria-pressed="${!!modes[m] && modes[m].root === root}"
-            title="${esc(t(MODES[m].help))}">
-            <span class="sw" aria-hidden="true"></span>
-            <span class="txt"><span>${t(MODES[m].label)}</span><small>${esc(t(MODES[m].sub).replace("{name}", nameYear(root)))}</small></span>
-          </button>`).join("")}
-          <button class="toggle focus" data-focus aria-pressed="${focusOn}" title="${esc(t("focusHelp"))}">
-            <span class="sw" aria-hidden="true"></span>
-            <span class="txt"><span>${t("focus")}</span><small>${esc(t("focusSub"))}</small></span>
-          </button>
-        </div>
-        </details>`;
+        ${chipList(`${t("siblings")} (${siblings.length})`, siblings)}`;
       syncPanel();
     }
-    document.getElementById("panelBody").addEventListener("toggle", ev => {
-      if (ev.target.matches("details.more")) moreOpen = ev.target.open;
-    }, true);
     document.getElementById("panelBody").addEventListener("click", ev => {
-      const m = ev.target.closest("[data-mode]");
-      if (m) return toggleMode(m.dataset.mode, selected);
-      if (ev.target.closest("[data-focus]")) return setFocus(!focusOn);
       const b = ev.target.closest("[data-id]"); if (b) select(b.dataset.id, true);
     });
     document.getElementById("panelClose").onclick = clearSelection;
@@ -1040,6 +1029,7 @@ function startViewer(data) {
 
     // ---------- start: whole tree, nobody preferred ----------
     document.getElementById("btnFit").onclick = () => fitAll();
+    applyHighlight();                       // initial state of the header toggles and the legend
     fitAll(0);
     document.getElementById("loading").remove();
   }
