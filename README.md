@@ -63,13 +63,18 @@ a password and published with GitHub Pages.
 
 | Folder | Committed? | Contents |
 |---|---|---|
-| `src/` | yes | `build_web.py` (CSV → viewer), `index.html` (viewer template) |
+| `src/` | yes | `build_web.py` (CSV → viewer), `index.html` (viewer template), `clean_csv.py` (CSV → cleaned copy) |
 | `public/` | yes (generated) | Password-encrypted viewer, deployed to GitHub Pages |
 | `docs/` | yes | Blank questionnaire for collecting data from relatives |
 | `data/` | **no** (private) | `ahnenblatt/` (`.ahn` + CSV export), `exports/` (HTML + PDF reports), `img/` (photos), `archive/` |
 | `web/` | **no** (generated) | Viewer with unencrypted data, for private sharing as a zip |
 
 `data/` and `web/` contain personal data of living people and are never committed.
+
+**Cleaned data:** `python src/clean_csv.py` writes a normalised copy of the Ahnenblatt export to
+`data/cleaned/family_tree_cleaned.csv` (ISO dates, countries, nicknames, addresses, …) plus a log of
+every change and a list of values that still need a decision. Corrections that are specific to this
+family live in private files next to it (`manual_fixes.tsv`, `place_countries.tsv`, `new_people.tsv`).
 
 **Photos:** put them in `data/img/`, named after the person's Ahnenblatt ID (e.g. `I12.jpg`) or with
 the same file name Ahnenblatt links for that person. JPG, PNG and WebP work; ~400 px wide is plenty.
