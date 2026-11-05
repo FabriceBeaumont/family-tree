@@ -1177,6 +1177,8 @@ function startViewer(data) {
       if (!force && key === focusKey) return;
       focusKey = key;
       const token = ++layoutToken;
+      svg.interrupt();                              // read the anchor from where the view really is
+      const before = selected && P.has(selected) ? screenAnchor(selected) : null;
       if (want) {
         const res = await computeLayout(want);
         if (token !== layoutToken) return;            // a newer request won
@@ -1184,9 +1186,20 @@ function startViewer(data) {
       } else { keep = null; P = full.P; bounds = full.bounds; }
       place();
       paintMinimapBase();
-      if (keep) fitSet(keep);
-      else if (selected) { const p = pos(selected); flyTo(p.x, p.y, 0.8); }
+      // Keep your place: the selected person stays at the same spot on screen at the same zoom,
+      // unless that zoom would show the new layout as a tiny cluster (then fit it).
+      const fitK = keep ? fitTransform(keep).k : Math.min(visibleArea().w / bounds.w, visibleArea().h / bounds.h);
+      if (before && P.has(selected) && before.k >= fitK * 0.5) {
+        const q = pos(selected);
+        svg.interrupt();                            // stop a running zoom so it cannot move the view afterwards
+        svg.call(zoom.transform, d3.zoomIdentity.translate(before.sx - q.x * before.k, before.sy - q.y * before.k).scale(before.k));
+      } else if (keep) fitSet(keep);
+      else if (selected) { const q = pos(selected); flyTo(q.x, q.y, 0.8); }
       else fitAll();
+    }
+    function screenAnchor(id) {                     // where a person is on screen right now
+      const tr = d3.zoomTransform(svg.node()), q = pos(id);
+      return { sx: tr.applyX(q.x), sy: tr.applyY(q.y), k: tr.k };
     }
     function setFocus(on) {
       focusOn = on;
@@ -1200,16 +1213,18 @@ function startViewer(data) {
       else { focusStrict = false; setFocus(false); }
     };
     langListeners.push(updateFocusButton);
-    function fitSet(set, ms = 750) {
+    function fitTransform(set) {                    // view that frames these people in the visible map
       const pts = [...set].filter(id => people.has(id) && P.has(id)).map(pos);
-      if (!pts.length) return;
+      if (!pts.length) return null;
       const v = visibleArea();
       const x0 = Math.min(...pts.map(p => p.x)) - W / 2, x1 = Math.max(...pts.map(p => p.x)) + W / 2;
       const y0 = Math.min(...pts.map(p => p.y)) - H / 2, y1 = Math.max(...pts.map(p => p.y)) + H / 2;
       const k = Math.max(0.03, Math.min(1, (v.w - 40) / (x1 - x0), (v.h - 40) / (y1 - y0)));
-      const { cx, cy } = v;
-      svg.transition().duration(ms).call(zoom.transform,
-        d3.zoomIdentity.translate(cx - (x0 + x1) / 2 * k, cy - (y0 + y1) / 2 * k).scale(k));
+      return d3.zoomIdentity.translate(v.cx - (x0 + x1) / 2 * k, v.cy - (y0 + y1) / 2 * k).scale(k);
+    }
+    function fitSet(set, ms = 750) {
+      const tr = fitTransform(set);
+      if (tr) svg.transition().duration(ms).call(zoom.transform, tr);
     }
     function modeSummary(m) {                       // "Fabrice Beaumont: 308 Personen (Vaterseite 199, Mutterseite 111)"
       const M = modes[m], n = countPeople(limitedSet(m));
@@ -1373,7 +1388,10 @@ function startViewer(data) {
     mm.addEventListener("pointerup", () => { mmDrag = false; });
 
     // ---------- start: whole tree, nobody preferred ----------
-    document.getElementById("btnFit").onclick = () => { clearSelection(); fitAll(); };   // the only way to deselect
+    document.getElementById("btnFit").onclick = () => {           // the only way to deselect
+      clearSelection();
+      if (!(focusOn && lastFocusSet.size)) fitAll();      // Fokus without a selection frames the highlighted group itself
+    };
     applyHighlight();                       // initial state of the header toggles and the legend
     fitAll(0);
     document.getElementById("loading").remove();
