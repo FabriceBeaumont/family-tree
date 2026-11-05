@@ -191,6 +191,7 @@
   #btnFocus svg { width: 15px; height: 15px; }
   #btnFocus:hover { background: var(--fill); }
   #btnFocus[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  #btnFocus.strict .ring { display: none; }        /* strict focus: just the dot */
   #btnFocus:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 60%, transparent); }
   /* bloodline / whole-tree toggles: emoji buttons like the theme button, coloured when on */
   .iconBtn { width: 40px; padding: 0; justify-content: center; }
@@ -365,7 +366,7 @@
     <label><span aria-hidden="true">↑</span><input id="genUp" type="number" min="0" max="99" inputmode="numeric" placeholder="∞" data-i18n-attr="aria-label:genUp"></label>
     <label><span aria-hidden="true">↓</span><input id="genDown" type="number" min="0" max="99" inputmode="numeric" placeholder="∞" data-i18n-attr="aria-label:genDown"></label>
     <span class="sep" aria-hidden="true"></span>
-    <button type="button" id="btnFocus" aria-pressed="false" data-i18n-attr="title:focusHelp"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="5.6"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg><span data-i18n="focus">Fokus</span></button>
+    <button type="button" id="btnFocus" aria-pressed="false"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle class="ring" cx="8" cy="8" r="5.6"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg><span class="lbl">Fokus</span></button>
   </div>
   <button type="button" class="btn glass modeBtn blood" id="btn-blood" aria-pressed="false"><span aria-hidden="true">🩸</span></button>
   <button type="button" class="btn glass modeBtn tree" id="btn-tree" aria-pressed="false"><span aria-hidden="true">🌳</span></button>
@@ -433,7 +434,7 @@ const TEXT = {
     helpSearch: "<b>Suche</b> – Namen eintippen, mit ↑/↓ und Enter auswählen.",
     helpFit: "<b>Alles</b> – zeigt den ganzen Baum und hebt die Auswahl auf (nur hier).",
     helpGens: "<b>Generationen</b> – ↑ wie viele Generationen Vorfahren, ↓ wie viele Nachkommen; leer = alle.",
-    helpFocus: "<b>Fokus</b> – blendet alle nicht hervorgehobenen Personen aus und ordnet den Rest neu an.",
+    helpFocus: "<b>Fokus</b> – 1. Klick: nur Hervorgehobene, neu angeordnet (◉). 2. Klick: streng – ohne Karten, die mit niemandem Sichtbaren verbunden sind (•). 3. Klick: aus.",
     helpBlood: "<b>Blutsverwandte</b> – alle Vorfahren der ausgewählten Person und deren Nachkommen; dunkelrot = Vaterseite, hellrot = Mutterseite, rot = beide.",
     helpTree: "<b>Gesamter Stammbaum</b> – alle Blutsverwandten plus deren Partner (grün/braun).",
     helpRel: "<b>Verwandtschaft</b> – schreibt unter jede Karte, wie die Person mit der ausgewählten verwandt ist; (n) = Anzahl der Verbindungen.",
@@ -448,7 +449,7 @@ const TEXT = {
     helpPanel: "<b>Infos einklappen</b> – › klappt die Infos ein (Esc am Computer); der Name am Rand bzw. unten öffnet sie wieder.",
     relations: "Verwandtschaft",
     relHelp: "Verwandtschaft: zeigt unter jeder Karte, wie die Person mit der ausgewählten Person verwandt ist (Blutsverwandte jeden Grades, Partner und angeheiratete Verwandte). Die Zahl in Klammern zählt die Verbindungen (Eltern-Kind- oder Partner-Schritte).",
-    focus: "Fokus", focusSub: "Nur hervorgehobene Personen zeigen und neu anordnen",
+    focus: "Fokus", focusStrict: "Fokus streng", focusStrictHelp: "Strenger Fokus: wie Fokus, aber ohne Personen, die mit niemand anderem Sichtbaren verbunden sind (z. B. an der Generationsgrenze). Klick: Fokus aus.", focusNext: "Klick: strenger Fokus (ohne lose Karten).", focusSub: "Nur hervorgehobene Personen zeigen und neu anordnen",
     focusHelp: "Blendet alle nicht hervorgehobenen Personen aus und ordnet die übrigen neu an, als wären sie allein im Stammbaum. Berücksichtigt die direkte Linie, Partner und Geschwister sowie eingeschaltete Blutlinie / Gesamter Stammbaum. Ausschalten zeigt wieder alle.",
     toDark: "Dunkles Design", toLight: "Helles Design", otherLang: "Switch to English",
     directLine: "Direkte Linie", directLineSub: "Vorfahren und Nachkommen von {name}",
@@ -488,7 +489,7 @@ const TEXT = {
     helpSearch: "<b>Search</b> – type a name, pick with ↑/↓ and Enter.",
     helpFit: "<b>All</b> – shows the whole tree and clears the selection (only here).",
     helpGens: "<b>Generations</b> – ↑ how many generations of ancestors, ↓ how many of descendants; empty = all.",
-    helpFocus: "<b>Focus</b> – hides everyone who is not highlighted and rearranges the rest.",
+    helpFocus: "<b>Focus</b> – 1st click: only highlighted people, rearranged (◉). 2nd click: strict – without cards that are not connected to anyone visible (•). 3rd click: off.",
     helpBlood: "<b>Blood relatives</b> – all ancestors of the selected person and their descendants; dark red = father's side, light red = mother's side, red = both.",
     helpTree: "<b>Whole family tree</b> – all blood relatives plus their partners (green/brown).",
     helpRel: "<b>Relationship</b> – writes under each card how the person is related to the selected one; (n) = number of links.",
@@ -503,7 +504,7 @@ const TEXT = {
     helpPanel: "<b>Fold the details</b> – › folds the details away (Esc on a computer); the name at the edge or bottom opens them again.",
     relations: "Relationship",
     relHelp: "Relationship: shows under each card how the person is related to the selected person (blood relatives of any degree, partners and in-laws). The number in brackets counts the links (parent-child or partner steps).",
-    focus: "Focus", focusSub: "Show only highlighted people, rearranged",
+    focus: "Focus", focusStrict: "Strict focus", focusStrictHelp: "Strict focus: like Focus, but without people who are not connected to anyone else visible (e.g. at the generation limit). Click: focus off.", focusNext: "Click: strict focus (without loose cards).", focusSub: "Show only highlighted people, rearranged",
     focusHelp: "Hides everyone who is not highlighted and rearranges the rest as if they were alone in the family tree. Uses the direct line, partners and siblings, plus Bloodline / Whole family tree when switched on. Turning it off shows everyone again.",
     toDark: "Dark appearance", toLight: "Light appearance", otherLang: "Auf Deutsch umschalten",
     directLine: "Direct line", directLineSub: "Ancestors and descendants of {name}",
@@ -1127,7 +1128,7 @@ function startViewer(data) {
       personSel.classed("bloodPat", p => onlyPat(p.id)).classed("bloodMat", p => onlyMat(p.id));
       edgeSel.classed("bloodPat", e => onlyPat(e.a === e.f.id ? e.b : e.a) && (people.has(e.b) ? onlyPat(e.b) : true))
         .classed("bloodMat", e => onlyMat(e.a === e.f.id ? e.b : e.a) && (people.has(e.b) ? onlyMat(e.b) : true));
-      document.getElementById("btnFocus").setAttribute("aria-pressed", focusOn);
+      updateFocusButton();
       // legend next to the navigation hint: only what is visible right now
       const item = (cls, label, help) => `<span class="item" title="${esc(help)}"><span class="swatch ${cls}" aria-hidden="true"></span>${esc(label)}</span>`;
       document.getElementById("legend").innerHTML = [
@@ -1143,9 +1144,35 @@ function startViewer(data) {
     }
 
     // ---------- Fokus: re-run the layout on the highlighted people only ----------
-    let focusOn = false, lastFocusSet = EMPTY, focusKey = "", layoutToken = 0;
+    // Fokus has three states: off -> on (◉) -> strict (•, no loose cards) -> off.
+    let focusOn = false, focusStrict = false, lastFocusSet = EMPTY, focusKey = "", layoutToken = 0;
+    // Strict focus: drop people without any parent, child or partner in the set (repeat until stable),
+    // then keep only the family dots that still connect someone.
+    function withoutLooseCards(set) {
+      const ids = new Set([...set].filter(id => people.has(id)));
+      const linked = id => [...parentIds(id), ...people.get(id).spouseFams.flatMap(fid => {
+        const f = fams.get(fid); return [f.husband, f.wife, ...f.children]; })].some(x => x && x !== id && ids.has(x));
+      for (let changed = true; changed;) {
+        changed = false;
+        for (const id of [...ids]) if (id !== selected && !linked(id)) { ids.delete(id); changed = true; }
+      }
+      const out = new Set(ids);
+      for (const id of set) if (fams.has(id)) {
+        const f = fams.get(id), ps = partnersIn(f, ids).length, kids = f.children.some(c => ids.has(c));
+        if (ps && (kids || ps === 2)) out.add(id);
+      }
+      return out;
+    }
+    function updateFocusButton() {
+      const b = document.getElementById("btnFocus");
+      b.setAttribute("aria-pressed", focusOn);
+      b.classList.toggle("strict", focusOn && focusStrict);
+      b.querySelector(".lbl").textContent = t(focusOn && focusStrict ? "focusStrict" : "focus");
+      b.title = focusOn && focusStrict ? t("focusStrictHelp") : t("focusHelp") + (focusOn ? "\n\n" + t("focusNext") : "");
+      b.ariaLabel = b.querySelector(".lbl").textContent;
+    }
     async function refocus(force = false) {
-      const want = focusOn && lastFocusSet.size > 0 ? lastFocusSet : null;
+      const want = focusOn && lastFocusSet.size > 0 ? (focusStrict ? withoutLooseCards(lastFocusSet) : lastFocusSet) : null;
       const key = want ? [...want].sort().join(",") : "";
       if (!force && key === focusKey) return;
       focusKey = key;
@@ -1167,7 +1194,12 @@ function startViewer(data) {
       if (!on) refocus();
       if (selected) showPanel(people.get(selected));
     }
-    document.getElementById("btnFocus").onclick = () => setFocus(!focusOn);
+    document.getElementById("btnFocus").onclick = () => {          // off -> on -> strict -> off
+      if (!focusOn) { focusStrict = false; setFocus(true); }
+      else if (!focusStrict) { focusStrict = true; updateFocusButton(); refocus(); }
+      else { focusStrict = false; setFocus(false); }
+    };
+    langListeners.push(updateFocusButton);
     function fitSet(set, ms = 750) {
       const pts = [...set].filter(id => people.has(id) && P.has(id)).map(pos);
       if (!pts.length) return;
