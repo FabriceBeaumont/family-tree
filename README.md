@@ -30,7 +30,7 @@ Move around it like a map, zoom in on any branch, and click a person to see who 
 | See the whole tree at once | Click the **⤢** button next to the search box |
 
 When you click a person, their direct line (parents, grandparents… and children, grandchildren…)
-is highlighted in orange. Click on empty space or press **Esc** to clear it.
+is highlighted in orange. The person stays selected while you explore; click **⤢** to clear the selection and see the whole tree.
 
 Card colors: **blue** = male, **pink** = female.
 

@@ -202,12 +202,12 @@
     transform: translateX(calc(100% + 24px)); transition: transform .3s cubic-bezier(.2, .8, .2, 1); }
   #panel.open { transform: none; }
   #panel:focus { outline: none; }
-  #panel h2 { margin: 0 72px 2px 0; font-size: 22px; line-height: 1.2; font-weight: 700; letter-spacing: -.02em; }
+  #panel h2 { margin: 0 40px 2px 0; font-size: 22px; line-height: 1.2; font-weight: 700; letter-spacing: -.02em; }
   #panel .sub { color: var(--muted); font-size: 14px; margin-bottom: 14px; font-variant-numeric: tabular-nums; }
   #panel .sub .gen { cursor: help; }
   #panel .close { position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border: 0; border-radius: 50%;
     background: var(--fill); font-size: 18px; line-height: 1; cursor: pointer; color: var(--muted); }
-  #panel .close.collapse { right: 50px; font-size: 20px; }
+  #panel .close.collapse { right: 14px; font-size: 20px; }
   /* collapsed panel: a slim tab on the right edge (desktop) / a bar at the bottom (phone) */
   #panelTab { position: fixed; right: 12px; top: 64px; width: 44px; max-height: calc(100vh - 88px); padding: 12px 0;
     border-radius: 14px; display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer;
@@ -338,7 +338,7 @@
   <button class="btn glass" id="btnPhotos" aria-pressed="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.6"/><circle cx="8" cy="6.4" r="2.2"/><path d="M3.9 12.7c.8-1.8 2.3-2.7 4.1-2.7s3.3.9 4.1 2.7"/></svg><span class="lbl" data-i18n="photos">Fotos</span></button>
 </div>
 
-<aside id="panel" class="glass" tabindex="-1" aria-label="Details" data-i18n-attr="aria-label:details"><button class="close collapse" id="panelCollapse" aria-label="Einklappen" data-i18n-attr="aria-label:collapse;title:collapse">›</button><button class="close" id="panelClose" aria-label="Schließen" data-i18n-attr="aria-label:close;title:close">×</button><div id="panelBody"></div></aside>
+<aside id="panel" class="glass" tabindex="-1" aria-label="Details" data-i18n-attr="aria-label:details"><button class="close collapse" id="panelCollapse" aria-label="Einklappen" data-i18n-attr="aria-label:collapse;title:collapse">›</button><div id="panelBody"></div></aside>
 <button id="panelTab" class="glass" type="button" hidden><span class="grab" aria-hidden="true"></span><span class="chev" aria-hidden="true">‹</span><span class="name"></span></button>
 <canvas id="minimap" class="glass" aria-label="Übersichtskarte" data-i18n-attr="aria-label:minimap"></canvas>
 <div id="hint"><span data-i18n="hint">Ziehen = verschieben · Mausrad = zoomen · Klick = Details &amp; Linie</span><span id="legend"></span></div>
@@ -373,7 +373,7 @@ const TEXT = {
     noData: "Keine Daten gefunden – bitte python src/build_web.py ausführen.",
     lockTitle: "Stammbaum", lockText: "Dieser Stammbaum ist passwortgeschützt.", password: "Passwort",
     open: "Öffnen", decrypting: "Entschlüsseln…", wrongPassword: "Falsches Passwort.",
-    search: "Person suchen…", fit: "Alles", fitTitle: "Gesamten Baum zeigen",
+    search: "Person suchen…", fit: "Alles", fitTitle: "Gesamten Baum zeigen (hebt die Auswahl auf)",
     details: "Details", close: "Auswahl aufheben", collapse: "Einklappen", expand: "Details zu {name} öffnen", minimap: "Übersichtskarte",
     hint: "Ziehen = verschieben · Mausrad = zoomen · Klick = Details & Linie",
     unknown: "Unbekannt", in: " in ",
@@ -407,7 +407,7 @@ const TEXT = {
     noData: "No data found – please run python src/build_web.py.",
     lockTitle: "Family tree", lockText: "This family tree is password-protected.", password: "Password",
     open: "Open", decrypting: "Decrypting…", wrongPassword: "Wrong password.",
-    search: "Search for a person…", fit: "All", fitTitle: "Show the whole tree",
+    search: "Search for a person…", fit: "All", fitTitle: "Show the whole tree (clears the selection)",
     details: "Details", close: "Clear selection", collapse: "Collapse", expand: "Open details for {name}", minimap: "Overview map",
     hint: "Drag = move · Scroll = zoom · Click = details & lineage",
     unknown: "Unknown", in: " in ",
@@ -691,20 +691,29 @@ function startViewer(data) {
       viewport.classed("far", ev.transform.k < 0.33);
       drawMinimap(ev.transform);
     });
-    svg.call(zoom).on("dblclick.zoom", null).on("click", () => clearSelection());
+    svg.call(zoom).on("dblclick.zoom", null);     // clicking empty map keeps the selection (only ⤢ clears it)
 
     const size = () => { const r = svg.node().getBoundingClientRect(); return [r.width, r.height]; };
-    function flyTo(x, y, k = 1, ms = 750) {
+    // The map area not covered by the header, the detail panel (right on desktop, bottom sheet on
+    // phones) or its collapsed tab. Uses offsetLeft/Top, i.e. the panel's final (open) position.
+    function visibleArea() {
       const [w, h] = size();
-      const panelOpen = document.getElementById("panel").classList.contains("open") && w > 700;
-      const cx = panelOpen ? (w - 360) / 2 : w / 2;
-      svg.transition().duration(ms).call(zoom.transform, d3.zoomIdentity.translate(cx - x * k, h / 2 - y * k).scale(k));
+      const panel = document.getElementById("panel"), tab = document.getElementById("panelTab");
+      const head = Math.max(...["topbar", "prefs"].map(id => document.getElementById(id).getBoundingClientRect().bottom));
+      let x0 = 0, x1 = w, y0 = Math.min(head + 8, h / 2), y1 = h;
+      if (panel.classList.contains("open")) { if (w > 700) x1 = panel.offsetLeft - 12; else y1 = panel.offsetTop - 8; }
+      else if (!tab.hidden) { if (w > 700) x1 = tab.offsetLeft - 8; else y1 = tab.offsetTop - 8; }
+      return { x0, x1, y0, y1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, w: x1 - x0, h: y1 - y0 };
+    }
+    function flyTo(x, y, k = 1, ms = 750) {
+      const v = visibleArea();
+      svg.transition().duration(ms).call(zoom.transform, d3.zoomIdentity.translate(v.cx - x * k, v.cy - y * k).scale(k));
     }
     function fitAll(ms = 750) {
-      const [w, h] = size();
-      const k = Math.min(w / bounds.w, h / bounds.h) * 0.95;
+      const v = visibleArea();
+      const k = Math.min(v.w / bounds.w, v.h / bounds.h) * 0.95;
       svg.transition().duration(ms).call(zoom.transform,
-        d3.zoomIdentity.translate((w - bounds.w * k) / 2, (h - bounds.h * k) / 2).scale(k));
+        d3.zoomIdentity.translate(v.cx - bounds.w * k / 2, v.cy - bounds.h * k / 2).scale(k));
     }
 
     // ---------- selection & lineage ----------
@@ -1021,13 +1030,11 @@ function startViewer(data) {
     function fitSet(set, ms = 750) {
       const pts = [...set].filter(id => people.has(id) && P.has(id)).map(pos);
       if (!pts.length) return;
-      const [w, h] = size();
-      const panelOpen = document.getElementById("panel").classList.contains("open") && w > 700;
-      const aw = (panelOpen ? w - 360 : w) - 80, ah = h - 160;   // room for top bar and panel
+      const v = visibleArea();
       const x0 = Math.min(...pts.map(p => p.x)) - W / 2, x1 = Math.max(...pts.map(p => p.x)) + W / 2;
       const y0 = Math.min(...pts.map(p => p.y)) - H / 2, y1 = Math.max(...pts.map(p => p.y)) + H / 2;
-      const k = Math.max(0.03, Math.min(1, aw / (x1 - x0), ah / (y1 - y0)));
-      const cx = (panelOpen ? (w - 360) / 2 : w / 2), cy = 64 + (h - 64) / 2;
+      const k = Math.max(0.03, Math.min(1, (v.w - 40) / (x1 - x0), (v.h - 40) / (y1 - y0)));
+      const { cx, cy } = v;
       svg.transition().duration(ms).call(zoom.transform,
         d3.zoomIdentity.translate(cx - (x0 + x1) / 2 * k, cy - (y0 + y1) / 2 * k).scale(k));
     }
@@ -1117,9 +1124,10 @@ function startViewer(data) {
     document.getElementById("panelBody").addEventListener("click", ev => {
       const b = ev.target.closest("[data-id]"); if (b) select(b.dataset.id, true);
     });
-    document.getElementById("panelClose").onclick = clearSelection;
     langListeners.push(() => { applyHighlight(); if (selected) showPanel(people.get(selected)); syncPanel(); });
-    document.addEventListener("keydown", ev => { if (ev.key === "Escape") clearSelection(); });
+    document.addEventListener("keydown", ev => {      // Esc folds the panel away; the person stays selected
+      if (ev.key === "Escape" && selected && !panelCollapsed) setCollapsed(true);
+    });
 
     // ---------- search ----------
     const searchEl = document.getElementById("search"), resultsEl = document.getElementById("results");
@@ -1186,7 +1194,7 @@ function startViewer(data) {
     mm.addEventListener("pointerup", () => { mmDrag = false; });
 
     // ---------- start: whole tree, nobody preferred ----------
-    document.getElementById("btnFit").onclick = () => fitAll();
+    document.getElementById("btnFit").onclick = () => { clearSelection(); fitAll(); };   // the only way to deselect
     applyHighlight();                       // initial state of the header toggles and the legend
     fitAll(0);
     document.getElementById("loading").remove();

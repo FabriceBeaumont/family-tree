@@ -31,7 +31,7 @@ klicken, um mehr über sie zu erfahren.
 | den ganzen Stammbaum zu sehen | Auf den **⤢**-Knopf neben dem Suchfeld klicken |
 
 Klickt man auf eine Person, wird ihre direkte Linie (Eltern, Großeltern … und Kinder, Enkel …)
-orange hervorgehoben. Ein Klick auf eine leere Stelle oder die Taste **Esc** hebt das wieder auf.
+orange hervorgehoben. Die Person bleibt ausgewählt, während man sich umsieht; erst ein Klick auf **⤢** hebt die Auswahl auf und zeigt den ganzen Baum.
 
 Kartenfarben: **blau** = männlich, **rosa** = weiblich.
 
