@@ -28,7 +28,7 @@ klicken, um mehr über sie zu erfahren.
 | zu einer verwandten Person zu springen | Im Seitenfeld auf den Namen klicken |
 | nur wenige Generationen zu zeigen | Oben Zahlen bei **↑** (Vorfahren) und **↓** (Nachkommen) eintragen; leer = alle |
 | Fotos ein- oder auszublenden | Auf **Fotos** klicken |
-| den ganzen Stammbaum zu sehen | Auf **⤢ Alles** klicken |
+| den ganzen Stammbaum zu sehen | Auf den **⤢**-Knopf neben dem Suchfeld klicken |
 
 Klickt man auf eine Person, wird ihre direkte Linie (Eltern, Großeltern … und Kinder, Enkel …)
 orange hervorgehoben. Ein Klick auf eine leere Stelle oder die Taste **Esc** hebt das wieder auf.

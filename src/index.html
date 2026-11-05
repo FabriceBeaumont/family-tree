@@ -173,6 +173,7 @@
   #btnFocus[aria-pressed="true"] { background: var(--accent); color: #fff; }
   #btnFocus:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 60%, transparent); }
   /* bloodline / whole-tree toggles: emoji buttons like the theme button, coloured when on */
+  .iconBtn { width: 40px; padding: 0; justify-content: center; }
   .modeBtn { width: 40px; padding: 0; justify-content: center; font-size: 18px; }
   /* tinted, not solid: a red drop on solid red would vanish */
   .modeBtn[aria-pressed="true"].blood { background: color-mix(in srgb, var(--blood) 35%, var(--card)); border: 2px solid var(--blood); }
@@ -317,7 +318,7 @@
     <input id="search" class="glass" type="search" placeholder="Person suchen…" data-i18n-attr="placeholder:search;aria-label:search" autocomplete="off">
     <ul id="results" class="glass"></ul>
   </div>
-  <button class="btn glass" id="btnFit" title="Gesamten Baum zeigen" aria-label="Gesamten Baum zeigen" data-i18n-attr="title:fitTitle;aria-label:fitTitle"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg><span class="lbl" data-i18n="fit">Alles</span></button>
+  <button class="btn glass iconBtn" id="btnFit" title="Gesamten Baum zeigen" aria-label="Gesamten Baum zeigen" data-i18n-attr="title:fitTitle;aria-label:fitTitle"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg></button>
   <div class="gens glass" role="group" data-i18n-attr="title:gensHelp;aria-label:gens">
     <label><span aria-hidden="true">↑</span><input id="genUp" type="number" min="0" max="99" inputmode="numeric" placeholder="∞" data-i18n-attr="aria-label:genUp"></label>
     <label><span aria-hidden="true">↓</span><input id="genDown" type="number" min="0" max="99" inputmode="numeric" placeholder="∞" data-i18n-attr="aria-label:genDown"></label>
@@ -716,6 +717,7 @@ function startViewer(data) {
       up(id, 0); down(id, 0);
       return set;
     }
+    let genFitTimer = 0;
     function setupGenInputs() {
       for (const [elId, apply] of [["genUp", v => { genUp = v; }], ["genDown", v => { genDown = v; }]]) {
         const el = document.getElementById(elId);
@@ -723,6 +725,9 @@ function startViewer(data) {
           const n = el.value === "" ? null : Math.max(0, Math.min(99, parseInt(el.value, 10)));
           apply(Number.isNaN(n) ? null : n);
           applyHighlight();
+          // zoom to what is highlighted now (Fokus mode fits itself after the re-layout)
+          clearTimeout(genFitTimer);
+          if (!focusOn && lastFocusSet.size) genFitTimer = setTimeout(() => fitSet(lastFocusSet), 400);
         });
       }
     }
@@ -775,10 +780,44 @@ function startViewer(data) {
     };
     const modes = { tree: null, blood: null };   // name -> { root, set } while switched on
     const EMPTY = new Set();
+    // Generation of every person relative to `ref` (parents -1, children +1, partners 0), by BFS.
+    function generationOffsets(ref) {
+      const off = new Map([[ref, 0]]), queue = [ref];
+      while (queue.length) {
+        const id = queue.shift(), g = off.get(id), p = people.get(id);
+        const next = [];
+        const pf = p.parentFam && fams.get(p.parentFam);
+        if (pf) for (const x of [pf.husband, pf.wife]) if (x) next.push([x, g - 1]);
+        for (const fid of p.spouseFams) {
+          const f = fams.get(fid);
+          for (const x of [f.husband, f.wife]) if (x) next.push([x, g]);
+          for (const c of f.children) next.push([c, g + 1]);
+        }
+        for (const [x, gx] of next) if (!off.has(x)) { off.set(x, gx); queue.push(x); }
+      }
+      return off;
+    }
+    // Bloodline / whole tree cut to the ↑/↓ generation limits, counted from the selected person
+    // (or from the furthest ancestor when nobody is selected).
+    function limitedSet(m) {
+      const full = modes[m].set;
+      if (genUp === null && genDown === null) return full;
+      const off = generationOffsets(selected || modes[m].root);
+      const ok = id => { const g = off.get(id);
+        return g !== undefined && (genUp === null || g >= -genUp) && (genDown === null || g <= genDown); };
+      const out = new Set();
+      for (const id of full) {
+        if (people.has(id)) { if (ok(id)) out.add(id); }
+        else if ([fams.get(id).husband, fams.get(id).wife].some(x => x && ok(x))) out.add(id);   // family dot
+      }
+      return out;
+    }
+
     function applyHighlight() {
       const sel = selected ? lineage(selected) : EMPTY;
       const on = Object.keys(MODES).filter(m => modes[m]);
-      const lit = id => sel.has(id) || on.some(m => modes[m].set.has(id));
+      const eff = Object.fromEntries(on.map(m => [m, limitedSet(m)]));      // what is actually shown
+      const lit = id => sel.has(id) || on.some(m => eff[m].has(id));
       viewport.classed("dimmed", !!selected || on.length > 0);
       personSel.classed("hl", p => sel.has(p.id)).classed("lit", p => lit(p.id)).classed("selected", p => p.id === selected);
       famSel.classed("hl", f => sel.has(f.id)).classed("lit", f => lit(f.id));
@@ -796,7 +835,7 @@ function startViewer(data) {
       const spouses = new Set(spouseOf.values());
       // everything that is highlighted = the Fokus set
       const focusSet = new Set([...sel, ...spouses, ...sibs]);
-      for (const m of on) for (const id of modes[m].set) focusSet.add(id);
+      for (const m of on) for (const id of eff[m]) focusSet.add(id);
       for (const f of fams.values()) if (partnersIn(f, focusSet).length && f.children.some(c => focusSet.has(c))) focusSet.add(f.id);
       lastFocusSet = focusSet;
       personSel.classed("spouse", p => spouses.has(p.id)).classed("sib", p => sibs.has(p.id));
@@ -808,7 +847,7 @@ function startViewer(data) {
       for (const x of ["M", "F", "U"]) edgeSel.classed("spouse-" + x, e => spouseSex(e) === x);
       edgeSel.classed("sib", e => sibs.has(e.b) && e.a === sp.parentFam);
       for (const m of Object.keys(MODES)) {
-        const set = modes[m] ? modes[m].set : EMPTY;
+        const set = modes[m] ? eff[m] : EMPTY;
         personSel.classed(m, p => set.has(p.id));
         famSel.classed(m, f => set.has(f.id));
         edgeSel.classed(m, e => set.has(e.a) && set.has(e.b));
@@ -879,7 +918,7 @@ function startViewer(data) {
       else modes[m] = { root, set: MODES[m].compute(root) };
       applyHighlight();
       if (selected) showPanel(people.get(selected));
-      if (modes[m] && !focusOn) fitSet(modes[m].set);   // in Fokus mode refocus() fits the view
+      if (modes[m] && !focusOn) fitSet(limitedSet(m));  // respects ↑/↓; in Fokus mode refocus() fits
     }
     for (const m of Object.keys(MODES)) document.getElementById("btn-" + m).onclick = () => {
       if (modes[m] && (!selected || modes[m].root === oldestAncestor(selected))) {   // switch off

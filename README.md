@@ -27,7 +27,7 @@ Move around it like a map, zoom in on any branch, and click a person to see who 
 | Jump to a relative | Click their name in that panel |
 | Show only a few generations | Type numbers into **↑** (ancestors) and **↓** (descendants) at the top; empty = all |
 | Show or hide photos | Click **Fotos** |
-| See the whole tree at once | Click **⤢ Alles** |
+| See the whole tree at once | Click the **⤢** button next to the search box |
 
 When you click a person, their direct line (parents, grandparents… and children, grandchildren…)
 is highlighted in orange. Click on empty space or press **Esc** to clear it.
