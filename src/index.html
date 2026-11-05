@@ -72,6 +72,11 @@
 
   .edge { fill: none; stroke: var(--line); stroke-width: 1.4; }
   .fam circle { fill: var(--card); stroke: var(--line); stroke-width: 1.4; }
+  /* century bands behind the tree (🕰️ toggle) */
+  #bands rect { fill: var(--ink); opacity: 0; }
+  #bands rect.odd { opacity: .045; }
+  #bands text { fill: var(--muted); opacity: .45; font-size: 120px; font-weight: 700; letter-spacing: -.02em; }
+  .modeBtn[aria-pressed="true"].time { background: color-mix(in srgb, var(--accent) 30%, var(--card)); border: 2px solid var(--accent); }
   .fam.childless { display: none; }      /* no children: only the partnership line, no dot */
   /* separated / divorced partners: dotted grey line, whatever highlight the couple is in */
   .edge.divorced { stroke: var(--muted) !important; stroke-dasharray: 2 5; stroke-linecap: round; stroke-width: 2 !important; }
@@ -347,7 +352,7 @@
   <symbol id="pic-U" viewBox="0 0 40 40"><circle cx="20" cy="15" r="7.5"/><path d="M5 40c0-10 6.5-15.5 15-15.5S35 30 35 40z"/></symbol>
   <symbol id="pic-M" viewBox="0 0 40 40"><circle cx="20" cy="15.5" r="7.5"/><path d="M12.2 14.5c0-6 3.6-8.6 7.8-8.6s7.8 2.6 7.8 8.6c-1.4-2.6-4.4-3.6-7.8-3.6s-6.4 1-7.8 3.6z"/><path d="M3 40c0-10 7-15 17-15s17 5 17 15z"/></symbol>
   <symbol id="pic-F" viewBox="0 0 40 40"><path d="M20 6.5c-5.6 0-9 4-9 9.5 0 4.4-.8 8-2.6 10.6 2.6 1 5.2 1.2 7.4.8L20 26l4.2 1.4c2.2.4 4.8.2 7.4-.8-1.8-2.6-2.6-6.2-2.6-10.6 0-5.5-3.4-9.5-9-9.5z"/><path d="M7 40c0-9 5.6-13.5 13-13.5S33 31 33 40z"/></symbol>
-<linearGradient id="gBlood"><stop class="a" offset="0"/><stop class="b" offset="1"/></linearGradient><linearGradient id="gBloodPat"><stop class="a" offset="0"/><stop class="b" offset="1"/></linearGradient><linearGradient id="gBloodMat"><stop class="a" offset="0"/><stop class="b" offset="1"/></linearGradient><linearGradient id="gTree"><stop class="a" offset="0"/><stop class="b" offset="1"/></linearGradient></defs><g id="viewport"><g id="edges"></g><g id="fams"></g><g id="people"></g></g></svg>
+<linearGradient id="gBlood"><stop class="a" offset="0"/><stop class="b" offset="1"/></linearGradient><linearGradient id="gBloodPat"><stop class="a" offset="0"/><stop class="b" offset="1"/></linearGradient><linearGradient id="gBloodMat"><stop class="a" offset="0"/><stop class="b" offset="1"/></linearGradient><linearGradient id="gTree"><stop class="a" offset="0"/><stop class="b" offset="1"/></linearGradient></defs><g id="viewport"><g id="bands"></g><g id="edges"></g><g id="fams"></g><g id="people"></g></g></svg>
 <div id="loading" data-i18n="loading">Layout wird berechnet…</div>
 <div id="lock" hidden>
   <form id="lockForm">
@@ -373,6 +378,7 @@
   </div>
   <button type="button" class="btn glass modeBtn blood" id="btn-blood" aria-pressed="false"><span aria-hidden="true">🩸</span></button>
   <button type="button" class="btn glass modeBtn tree" id="btn-tree" aria-pressed="false"><span aria-hidden="true">🌳</span></button>
+  <button type="button" class="btn glass modeBtn time" id="btnTime" aria-pressed="false" data-i18n-attr="title:timeHelp;aria-label:centuries"><span aria-hidden="true">🕰️</span></button>
   <button type="button" class="btn glass modeBtn rel" id="btnRel" aria-pressed="false" data-i18n-attr="title:relHelp;aria-label:relations"><span aria-hidden="true">👪</span></button>
   <button class="btn glass" id="btnPhotos" aria-pressed="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.6"/><circle cx="8" cy="6.4" r="2.2"/><path d="M3.9 12.7c.8-1.8 2.3-2.7 4.1-2.7s3.3.9 4.1 2.7"/></svg><span class="lbl" data-i18n="photos">Fotos</span></button>
 </div>
@@ -440,6 +446,7 @@ const TEXT = {
     helpFocus: "<b>Fokus</b> – 1. Klick: nur Hervorgehobene, neu angeordnet (◉). 2. Klick: streng – ohne Karten, die mit niemandem Sichtbaren verbunden sind (•). 3. Klick: aus.",
     helpBlood: "<b>Blutsverwandte</b> – alle Vorfahren der ausgewählten Person und deren Nachkommen; dunkelrot = Vaterseite, hellrot = Mutterseite, rot = beide.",
     helpTree: "<b>Gesamter Stammbaum</b> – alle Blutsverwandten plus deren Partner (grün/braun).",
+    helpTime: "<b>Jahrhunderte</b> – Karten senkrecht nach Geburtsjahr, Hintergrund in Jahrhundert-Streifen.",
     helpRel: "<b>Verwandtschaft</b> – schreibt unter jede Karte, wie die Person mit der ausgewählten verwandt ist; (n) = Anzahl der Verbindungen.",
     helpPhotos: "<b>Fotos</b> – Fotos bzw. Platzhalter-Figuren ein- oder ausblenden.",
     helpTheme: "<b>Design</b> – zwischen hellem und dunklem Design wechseln.",
@@ -452,6 +459,8 @@ const TEXT = {
     helpNav: "<b>Bewegen & Zoomen</b> – ziehen bzw. wischen verschiebt, Mausrad bzw. zwei Finger zoomen, Klick/Tippen auf eine Karte zeigt die Details.",
     helpPanel: "<b>Infos einklappen</b> – › klappt die Infos ein (Esc am Computer); der Name am Rand bzw. unten öffnet sie wieder.",
     relations: "Verwandtschaft",
+    centuries: "Jahrhunderte",
+    timeHelp: "Jahrhunderte: ordnet alle Karten senkrecht nach Geburtsjahr und färbt den Hintergrund in Jahrhundert-Streifen (1700, 1800, 1900 …). Fehlende Geburtsjahre werden aus Eltern, Kindern und Partnern geschätzt.",
     relHelp: "Verwandtschaft: zeigt unter jeder Karte, wie die Person mit der ausgewählten Person verwandt ist (Blutsverwandte jeden Grades, Partner und angeheiratete Verwandte). Die Zahl in Klammern zählt die Verbindungen (Eltern-Kind- oder Partner-Schritte).",
     focus: "Fokus", focusStrict: "Fokus streng", focusStrictHelp: "Strenger Fokus: wie Fokus, aber ohne Personen, die mit niemand anderem Sichtbaren verbunden sind (z. B. an der Generationsgrenze). Klick: Fokus aus.", focusNext: "Klick: strenger Fokus (ohne lose Karten).", focusSub: "Nur hervorgehobene Personen zeigen und neu anordnen",
     focusHelp: "Blendet alle nicht hervorgehobenen Personen aus und ordnet die übrigen neu an, als wären sie allein im Stammbaum. Berücksichtigt die direkte Linie, Partner und Geschwister sowie eingeschaltete Blutlinie / Gesamter Stammbaum. Ausschalten zeigt wieder alle.",
@@ -496,6 +505,7 @@ const TEXT = {
     helpFocus: "<b>Focus</b> – 1st click: only highlighted people, rearranged (◉). 2nd click: strict – without cards that are not connected to anyone visible (•). 3rd click: off.",
     helpBlood: "<b>Blood relatives</b> – all ancestors of the selected person and their descendants; dark red = father's side, light red = mother's side, red = both.",
     helpTree: "<b>Whole family tree</b> – all blood relatives plus their partners (green/brown).",
+    helpTime: "<b>Centuries</b> – cards arranged vertically by year of birth, background in century bands.",
     helpRel: "<b>Relationship</b> – writes under each card how the person is related to the selected one; (n) = number of links.",
     helpPhotos: "<b>Photos</b> – show or hide photos and placeholder figures.",
     helpTheme: "<b>Appearance</b> – switch between light and dark.",
@@ -508,6 +518,8 @@ const TEXT = {
     helpNav: "<b>Move & zoom</b> – drag or swipe to move, mouse wheel or two fingers to zoom, click/tap a card for details.",
     helpPanel: "<b>Fold the details</b> – › folds the details away (Esc on a computer); the name at the edge or bottom opens them again.",
     relations: "Relationship",
+    centuries: "Centuries",
+    timeHelp: "Centuries: arranges all cards vertically by year of birth and shades the background in century bands (1700, 1800, 1900 …). Missing birth years are estimated from parents, children and partners.",
     relHelp: "Relationship: shows under each card how the person is related to the selected person (blood relatives of any degree, partners and in-laws). The number in brackets counts the links (parent-child or partner steps).",
     focus: "Focus", focusStrict: "Strict focus", focusStrictHelp: "Strict focus: like Focus, but without people who are not connected to anyone else visible (e.g. at the generation limit). Click: focus off.", focusNext: "Click: strict focus (without loose cards).", focusSub: "Show only highlighted people, rearranged",
     focusHelp: "Hides everyone who is not highlighted and rearranges the rest as if they were alone in the family tree. Uses the direct line, partners and siblings, plus Bloodline / Whole family tree when switched on. Turning it off shows everyone again.",
@@ -588,7 +600,7 @@ function renderHelp() {
   document.getElementById("helpBody").innerHTML = `
     <h3>${t("helpControls")}</h3><dl>
       ${row("🔍", "helpSearch")}${row(icon("btnFit"), "helpFit")}${row("↑↓", "helpGens")}${row(icon("btnFocus"), "helpFocus")}
-      ${row("🩸", "helpBlood")}${row("🌳", "helpTree")}${row("👪", "helpRel")}${row(icon("btnPhotos"), "helpPhotos")}
+      ${row("🩸", "helpBlood")}${row("🌳", "helpTree")}${row("🕰️", "helpTime")}${row("👪", "helpRel")}${row(icon("btnPhotos"), "helpPhotos")}
       ${row(document.getElementById("btnTheme").innerHTML, "helpTheme")}${row(lang === "de" ? "EN" : "DE", "helpLang")}</dl>
     <h3>${t("helpColors")}</h3><dl>
       ${row('<span class="swatch"></span>', "helpDirect")}${row('<span class="swatch spouse"></span>', "helpPartners")}${row('<span class="swatch divorced"></span>', "helpDivorced")}
@@ -727,6 +739,104 @@ function startViewer(data) {
   async function render() {
     const full = await computeLayout(null);
     let P = full.P, bounds = full.bounds, keep = null;
+
+    // ---------- 🕰️ centuries: y position by year of birth ----------
+    // Every person gets a year: the known birth year, else estimated from relatives (parents +30,
+    // children -30, partners equal), else the median year of their row in the normal layout.
+    const GEN_YEARS = 30, YEAR_PX = 4.8;
+    const estYear = new Map();
+    for (const p of people.values()) if (p.by) estYear.set(p.id, p.by);
+    for (let round = 0; round < 12; round++) {
+      let added = 0;
+      for (const p of people.values()) {
+        if (estYear.has(p.id)) continue;
+        const guesses = [];
+        const pf = p.parentFam && fams.get(p.parentFam);
+        if (pf) for (const x of [pf.husband, pf.wife]) if (x && estYear.has(x)) guesses.push(estYear.get(x) + GEN_YEARS);
+        for (const fid of p.spouseFams) {
+          const f = fams.get(fid);
+          for (const x of [f.husband, f.wife]) if (x && x !== p.id && estYear.has(x)) guesses.push(estYear.get(x));
+          for (const c of f.children) if (estYear.has(c)) guesses.push(estYear.get(c) - GEN_YEARS);
+        }
+        if (guesses.length) { estYear.set(p.id, Math.round(guesses.reduce((a, b) => a + b) / guesses.length)); added++; }
+      }
+      if (!added) break;
+    }
+    {                                                // still unknown: median year of the same row
+      const rows = new Map();
+      for (const [id, y] of estYear) { const r = Math.round(full.P.get(id).y); (rows.get(r) || rows.set(r, []).get(r)).push(y); }
+      const median = a => a.slice().sort((x, y) => x - y)[a.length >> 1];
+      const known = [...estYear.values()], fallback = known.length ? median(known) : 1900;
+      for (const p of people.values()) if (!estYear.has(p.id)) {
+        const r = rows.get(Math.round(full.P.get(p.id).y));
+        estYear.set(p.id, r ? median(r) : fallback);
+      }
+    }
+    const years = [...estYear.values()];
+    const SLOT_YEARS = 20;                           // 5 slots per century
+    const Y0 = Math.floor(Math.min(...years) / 100) * 100, Y1 = Math.ceil((Math.max(...years) + 1) / 100) * 100;
+    // slot per couple block from its mean (estimated) birth year; a child block always lies at
+    // least one slot below its parents' block (fixes impossible dates instead of breaking the layout)
+    const slots = new Map();
+    for (const [bid, ids] of blocks) slots.set(bid, Math.floor((ids.reduce((a, id) => a + estYear.get(id), 0) / ids.length - Y0) / SLOT_YEARS));
+    for (let changed = true, guard = 0; changed && guard < 50; guard++) {
+      changed = false;
+      for (const f of fams.values()) {
+        const pb = blockOf.get(f.husband || f.wife);
+        for (const c of f.children) { const cb = blockOf.get(c);
+          if (cb !== pb && slots.get(cb) <= slots.get(pb)) { slots.set(cb, slots.get(pb) + 1); changed = true; } }
+      }
+    }
+    const SLOT_PX = 96;                              // 20 years = one row of cards
+    const slotTop = k => MARGIN + k * SLOT_PX - (SLOT_PX - H) / 2;       // band edge between two slots
+    function slotted(base) {
+      const rows = new Map();                        // slot -> blocks, keeping the normal layout's x order
+      for (const [bid, ids] of blocks) {
+        const kept = ids.filter(id => base.P.has(id));
+        if (!kept.length) continue;
+        const x0 = base.P.get(kept[0]).x - W / 2;
+        (rows.get(slots.get(bid)) || rows.set(slots.get(bid), []).get(slots.get(bid))).push({ kept, x0, w: kept.length * W + (kept.length - 1) * GAP });
+      }
+      const P = new Map();
+      let maxX = 0, maxY = 0;
+      for (const [k, row] of rows) {
+        row.sort((a, b) => a.x0 - b.x0);
+        let free = -Infinity;
+        const y = MARGIN + k * SLOT_PX + H / 2;
+        for (const it of row) {
+          const x0 = Math.max(it.x0, free);
+          it.kept.forEach((id, i) => P.set(id, { x: x0 + W / 2 + i * (W + GAP), y }));
+          free = x0 + it.w + 40;
+          maxX = Math.max(maxX, x0 + it.w); maxY = Math.max(maxY, y);
+        }
+      }
+      for (const f of fams.values()) {
+        if (!base.P.has(f.id)) continue;
+        const ps = [f.husband, f.wife].filter(x => x && P.has(x)).map(x => P.get(x));
+        if (ps.length) P.set(f.id, { x: ps.reduce((a, q) => a + q.x, 0) / ps.length, y: Math.max(...ps.map(q => q.y)) + H / 2 + 16 });
+      }
+      return { P, bounds: { w: Math.max(base.bounds.w, maxX + MARGIN), h: maxY + H + MARGIN } };
+    }
+    let centuriesOn = false, fullTime = null;
+    async function layoutFor(keepSet) {             // the base layout for the current mode
+      const base = keepSet ? await computeLayout(keepSet) : full;
+      if (!centuriesOn) return base;
+      return keepSet ? slotted(base) : fullTime || (fullTime = slotted(full));
+    }
+    function drawBands() {
+      const g = d3.select("#bands");
+      if (!centuriesOn) { g.selectAll("*").remove(); return; }
+      // only the centuries that hold visible cards
+      const ks = [...P.entries()].filter(([id]) => people.has(id) && (!keep || keep.has(id))).map(([, q]) => Math.round((q.y - MARGIN - H / 2) / SLOT_PX));
+      const c0 = Y0 + Math.floor(Math.min(...ks) * SLOT_YEARS / 100) * 100, c1 = Y0 + Math.floor(Math.max(...ks) * SLOT_YEARS / 100) * 100;
+      const cs = d3.range(c0, c1 + 1, 100), per = 100 / SLOT_YEARS;
+      const top = c => slotTop((c - Y0) / SLOT_YEARS);
+      g.selectAll("rect").data(cs).join("rect").attr("class", c => ((c - Y0) / 100) % 2 ? "odd" : "")
+        .attr("x", 0).attr("width", bounds.w).attr("y", top).attr("height", per * SLOT_PX);
+      const labelXs = d3.range(40, Math.max(bounds.w, 41), 3200);
+      g.selectAll("text").data(cs.flatMap(c => labelXs.map(x => ({ c, x })))).join("text")
+        .attr("x", d => d.x).attr("y", d => top(d.c) + 110).text(d => d.c);
+    }
     const pos = id => P.get(id);
     const vis = id => !keep || keep.has(id);
 
@@ -1047,6 +1157,21 @@ function startViewer(data) {
       document.getElementById("btnRel").setAttribute("aria-pressed", relOn);
     }
     document.getElementById("btnRel").onclick = () => { relOn = !relOn; applyRelations(); };
+    document.getElementById("btnTime").onclick = async () => {
+      const anchor = selected && P.has(selected) ? screenAnchor(selected) : null;
+      centuriesOn = !centuriesOn;
+      document.getElementById("btnTime").setAttribute("aria-pressed", centuriesOn);
+      const token = ++layoutToken, res = await layoutFor(keep);
+      if (token !== layoutToken) return;
+      P = res.P; bounds = res.bounds;
+      drawBands();
+      place();
+      paintMinimapBase();
+      if (anchor && P.has(selected)) {             // keep the selected person where they are
+        const q = pos(selected);
+        svg.interrupt().call(zoom.transform, d3.zoomIdentity.translate(anchor.sx - q.x * anchor.k, anchor.sy - q.y * anchor.k).scale(anchor.k));
+      } else if (keep) fitSet(keep); else fitAll();
+    };
 
     // Generation of every person relative to `ref` (parents -1, children +1, partners 0), by BFS.
     function generationOffsets(ref) {
@@ -1187,11 +1312,10 @@ function startViewer(data) {
       const token = ++layoutToken;
       svg.interrupt();                              // read the anchor from where the view really is
       const before = selected && P.has(selected) ? screenAnchor(selected) : null;
-      if (want) {
-        const res = await computeLayout(want);
-        if (token !== layoutToken) return;            // a newer request won
-        keep = want; P = res.P; bounds = res.bounds;
-      } else { keep = null; P = full.P; bounds = full.bounds; }
+      const res = await layoutFor(want);
+      if (token !== layoutToken) return;              // a newer request won
+      keep = want; P = res.P; bounds = res.bounds;
+      drawBands();
       place();
       paintMinimapBase();
       // Keep your place: the selected person stays at the same spot on screen at the same zoom,
