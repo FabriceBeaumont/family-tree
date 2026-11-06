@@ -96,6 +96,25 @@
   /* avatars: photo, or a pictogram (male / female / diverse) when there is none */
   .person .avatar { display: none; pointer-events: none; }
   .photos .person .avatar { display: inline; }
+  .photos .person .avatar.hasPhoto { pointer-events: auto; cursor: zoom-in; }
+  /* photo window: enlarged photo, 1/n, arrows / swipe */
+  #photoBox { width: min(920px, calc(100% - 24px)); height: min(88vh, 900px); padding: 0; border: 0; border-radius: 18px;
+    background: #000; color: #fff; overflow: hidden; }
+  #photoBox[open] { display: grid; grid-template-rows: 1fr auto; }
+  #photoBox::backdrop { background: rgba(0, 0, 0, .7); }
+  #pbImg { width: 100%; height: 100%; object-fit: contain; min-height: 0; touch-action: pan-y; user-select: none; -webkit-user-drag: none; }
+  #photoBox .pbCap { display: flex; gap: 12px; justify-content: center; align-items: baseline; padding: 10px 16px 14px;
+    font-size: 14px; background: rgba(0, 0, 0, .85); }
+  #photoBox .pbCap #photoName { font-weight: 600; }
+  #photoBox .pbCap #pbDate, #photoBox .pbCap #pbCount { color: #c7c7cc; font-variant-numeric: tabular-nums; }
+  #photoBox button { position: absolute; border: 0; cursor: pointer; color: #fff; background: rgba(40, 40, 44, .65);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+  #photoBox .pbClose { top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; font-size: 20px; z-index: 2; }
+  #photoBox .pbNav { top: 50%; transform: translateY(-50%); width: 44px; height: 64px; border-radius: 12px; font-size: 30px; }
+  #photoBox .pbNav.prev { left: 12px; } #photoBox .pbNav.next { right: 12px; }
+  #photoBox .pbNav[hidden] { display: none; }
+  #photoBox button:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 70%, transparent); }
+  #panel .sub .pid { cursor: help; font-variant-numeric: tabular-nums; }
   .far .person .avatar { display: none; }
   .avatar .bg { fill: var(--fill); }
   .avatar use { fill: var(--ink); }
@@ -396,6 +415,13 @@
   <div class="helpHead"><h2 id="helpHeading"></h2><button type="button" class="close" id="helpClose" data-i18n-attr="aria-label:helpClose;title:helpClose">×</button></div>
   <div id="helpBody"></div>
 </dialog>
+<dialog id="photoBox" aria-labelledby="photoName">
+  <button type="button" class="pbClose" id="pbClose" data-i18n-attr="aria-label:helpClose;title:helpClose">×</button>
+  <button type="button" class="pbNav prev" id="pbPrev" data-i18n-attr="aria-label:photoPrev;title:photoPrev">‹</button>
+  <img id="pbImg" alt="">
+  <button type="button" class="pbNav next" id="pbNext" data-i18n-attr="aria-label:photoNext;title:photoNext">›</button>
+  <div class="pbCap"><span id="photoName"></span><span id="pbDate"></span><span id="pbCount"></span></div>
+</dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/elkjs@0.9.3/lib/elk.bundled.js"></script>
@@ -438,6 +464,8 @@ const TEXT = {
     gensHelp: "Begrenzt die direkte Linie der ausgewählten Person: ↑ wie viele Generationen Vorfahren, ↓ wie viele Generationen Nachkommen. Leer = alle. Mit Fokus werden nur diese Generationen gezeigt.",
     photos: "Fotos", photosHide: "Fotos ausblenden", photosShow: "Fotos einblenden",
     selectFirst: "Zuerst eine Person auswählen.",
+    photoPrev: "Vorheriges Foto", photoNext: "Nächstes Foto", photoUndated: "ohne Datum", photoOpen: "Foto vergrößern",
+    personId: "Personen-ID – für Fotos: {id}_JJJJ-MM-TT.jpg in data/img/ ablegen",
     helpTitle: "Hilfe: so funktioniert der Stammbaum", helpClose: "Schließen",
     helpControls: "Knöpfe oben", helpColors: "Farben", helpMap: "Karte & Infos",
     helpSearch: "<b>Suche</b> – Namen eintippen, mit ↑/↓ und Enter auswählen.",
@@ -448,7 +476,7 @@ const TEXT = {
     helpTree: "<b>Gesamter Stammbaum</b> – alle Blutsverwandten plus deren Partner (grün/braun).",
     helpTime: "<b>Jahrhunderte</b> – Karten senkrecht nach Geburtsjahr, Hintergrund in Jahrhundert-Streifen.",
     helpRel: "<b>Verwandtschaft</b> – schreibt unter jede Karte, wie die Person mit der ausgewählten verwandt ist; (n) = Anzahl der Verbindungen.",
-    helpPhotos: "<b>Fotos</b> – Fotos bzw. Platzhalter-Figuren ein- oder ausblenden.",
+    helpPhotos: "<b>Fotos</b> – Fotos bzw. Platzhalter-Figuren ein- oder ausblenden. Klick auf ein Foto vergrößert es; mit ‹ › bzw. Wischen durch weitere Fotos blättern.",
     helpTheme: "<b>Design</b> – zwischen hellem und dunklem Design wechseln.",
     helpLang: "<b>Sprache</b> – Deutsch / Englisch.",
     helpDirect: "<b>Direkte Linie</b> – Eltern, Großeltern … und Kinder, Enkel … der ausgewählten Person.",
@@ -497,6 +525,8 @@ const TEXT = {
     gensHelp: "Limits the selected person's direct line: ↑ how many generations of ancestors, ↓ how many generations of descendants. Empty = all. With Focus, only these generations are shown.",
     photos: "Photos", photosHide: "Hide photos", photosShow: "Show photos",
     selectFirst: "Select a person first.",
+    photoPrev: "Previous photo", photoNext: "Next photo", photoUndated: "undated", photoOpen: "Enlarge photo",
+    personId: "Person ID – for photos, put {id}_YYYY-MM-DD.jpg into data/img/",
     helpTitle: "Help: how the family tree works", helpClose: "Close",
     helpControls: "Buttons at the top", helpColors: "Colours", helpMap: "Map & details",
     helpSearch: "<b>Search</b> – type a name, pick with ↑/↓ and Enter.",
@@ -507,7 +537,7 @@ const TEXT = {
     helpTree: "<b>Whole family tree</b> – all blood relatives plus their partners (green/brown).",
     helpTime: "<b>Centuries</b> – cards arranged vertically by year of birth, background in century bands.",
     helpRel: "<b>Relationship</b> – writes under each card how the person is related to the selected one; (n) = number of links.",
-    helpPhotos: "<b>Photos</b> – show or hide photos and placeholder figures.",
+    helpPhotos: "<b>Photos</b> – show or hide photos and placeholder figures. Click a photo to enlarge it; use ‹ › or swipe to see further photos.",
     helpTheme: "<b>Appearance</b> – switch between light and dark.",
     helpLang: "<b>Language</b> – German / English.",
     helpDirect: "<b>Direct line</b> – parents, grandparents … and children, grandchildren … of the selected person.",
@@ -890,10 +920,14 @@ function startViewer(data) {
     personSel.append("rect").attr("class", "card").attr("width", W).attr("height", H).attr("rx", 8);
     personSel.append("rect").attr("class", "stripe").attr("width", 6).attr("height", H).attr("rx", 3);
     const avatar = personSel.append("g").attr("class", "avatar").attr("clip-path", "url(#avatarClip)");
+    avatar.filter(p => p.photos && p.photos.length).append("title").text(() => t("photoOpen"));
     avatar.append("circle").attr("class", "bg").attr("cx", 34).attr("cy", 32).attr("r", 20);
-    avatar.filter(p => !p.photo).append("use").attr("href", p => `#pic-${p.sex === "M" || p.sex === "F" ? p.sex : "U"}`)
+    const photoOf = p => p.photos && p.photos.length ? p.photos[0].src : null;   // newest first
+    avatar.classed("hasPhoto", p => !!photoOf(p))
+      .on("click", (ev, p) => { if (!photoOf(p)) return; ev.stopPropagation(); select(p.id); openPhotos(p); });
+    avatar.filter(p => !photoOf(p)).append("use").attr("href", p => `#pic-${p.sex === "M" || p.sex === "F" ? p.sex : "U"}`)
       .attr("x", 14).attr("y", 12).attr("width", 40).attr("height", 40);
-    avatar.filter(p => p.photo).append("image").attr("href", p => p.photo).attr("x", 14).attr("y", 12)
+    avatar.filter(p => photoOf(p)).append("image").attr("href", photoOf).attr("x", 14).attr("y", 12)
       .attr("width", 40).attr("height", 40).attr("preserveAspectRatio", "xMidYMid slice");
     personSel.append("text").attr("class", "given").attr("y", 21);
     personSel.append("text").attr("class", "surname").attr("y", 38);
@@ -1439,7 +1473,7 @@ function startViewer(data) {
         children.push(...f.children);
       }
       document.getElementById("panelBody").innerHTML = `
-        <h2>${esc([p.title, fullName(p)].filter(Boolean).join(" "))}</h2><div class="sub">${esc(lifeSpan(p)) || "&nbsp;"}${(g => g ? ` · <span class="gen" title="${esc(t("generationRange").replace("{from}", g.from).replace("{to}", g.to))}">${esc(g[lang])}</span>` : "")(generationOf(p.by))}</div>
+        <h2>${esc([p.title, fullName(p)].filter(Boolean).join(" "))}</h2><div class="sub">${esc(lifeSpan(p)) || "&nbsp;"}${(g => g ? ` · <span class="gen" title="${esc(t("generationRange").replace("{from}", g.from).replace("{to}", g.to))}">${esc(g[lang])}</span>` : "")(generationOf(p.by))} · <span class="pid" title="${esc(t("personId").replace("{id}", p.id))}">${p.id}</span></div>
         ${rows.length ? `<dl>${rows.map(([k, v]) => `<dt>${t(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : ""}
         ${chipList(t("parents"), parents)}
         ${spouses ? `<h3>${t("partners")}</h3>${spouses}` : ""}
@@ -1452,8 +1486,40 @@ function startViewer(data) {
     });
     langListeners.push(() => { applyHighlight(); if (selected) showPanel(people.get(selected)); syncPanel(); });
     document.addEventListener("keydown", ev => {      // Esc folds the panel away; the person stays selected
-      if (ev.key === "Escape" && selected && !panelCollapsed && !document.getElementById("help").open) setCollapsed(true);
+      if (ev.key === "Escape" && selected && !panelCollapsed && !document.getElementById("help").open && !document.getElementById("photoBox").open) setCollapsed(true);
     });
+
+    // ---------- photo window ----------
+    const pb = document.getElementById("photoBox");
+    let pbPerson = null, pbIndex = 0;
+    function showPhoto(i) {
+      const list = pbPerson.photos, n = list.length;
+      pbIndex = (i + n) % n;
+      const ph = list[pbIndex];
+      document.getElementById("pbImg").src = ph.src;
+      document.getElementById("pbImg").alt = fullName(pbPerson);
+      document.getElementById("photoName").textContent = fullName(pbPerson);
+      document.getElementById("pbDate").textContent = ph.date ? fmtDate(ph.date) : t("photoUndated");
+      document.getElementById("pbCount").textContent = n > 1 ? `${pbIndex + 1}/${n}` : "";
+      document.getElementById("pbPrev").hidden = document.getElementById("pbNext").hidden = n < 2;
+    }
+    function openPhotos(p) { pbPerson = p; showPhoto(0); if (!pb.open) pb.showModal(); }
+    document.getElementById("pbPrev").onclick = () => showPhoto(pbIndex - 1);
+    document.getElementById("pbNext").onclick = () => showPhoto(pbIndex + 1);
+    document.getElementById("pbClose").onclick = () => pb.close();
+    pb.addEventListener("click", ev => { if (ev.target === pb) pb.close(); });      // backdrop
+    pb.addEventListener("keydown", ev => {
+      if (ev.key === "ArrowLeft") { showPhoto(pbIndex - 1); ev.preventDefault(); }
+      if (ev.key === "ArrowRight") { showPhoto(pbIndex + 1); ev.preventDefault(); }
+    });
+    let swipeX = null;                                                             // swipe left / right
+    const pbImg = document.getElementById("pbImg");
+    pbImg.addEventListener("pointerdown", ev => { swipeX = ev.clientX; });
+    pbImg.addEventListener("pointerup", ev => {
+      if (swipeX !== null && Math.abs(ev.clientX - swipeX) > 40 && pbPerson.photos.length > 1) showPhoto(pbIndex + (ev.clientX < swipeX ? 1 : -1));
+      swipeX = null;
+    });
+    langListeners.push(() => { if (pb.open) showPhoto(pbIndex); });
 
     // ---------- search ----------
     const searchEl = document.getElementById("search"), resultsEl = document.getElementById("results");

@@ -77,8 +77,11 @@ a password and published with GitHub Pages.
 every change and a list of values that still need a decision. Corrections that are specific to this
 family live in private files next to it (`manual_fixes.tsv`, `place_countries.tsv`, `new_people.tsv`).
 
-**Photos:** put them in `data/img/`, named after the person's Ahnenblatt ID (e.g. `I12.jpg`) or with
-the same file name Ahnenblatt links for that person. JPG, PNG and WebP work; ~400 px wide is plenty.
+**Photos:** put them into `data/img/`. Name each file after the person's ID (shown at the top of the
+person's info panel, e.g. `I81`) plus an optional date: `I81_2019-06-12.jpg`, `I81_2019-06.jpg`,
+`I81_2019.jpg` or just `I81.jpg`. `Surname_Given_2019.jpg` also works, but only if exactly one person
+has that name (the build prints a warning otherwise). A person can have several photos: the card shows
+the newest; clicking it opens all of them (‹ › or swipe). JPG, PNG and WebP; ~1200 px wide is plenty.
 The build embeds them in the data, so `--publish` encrypts them like everything else.
 
 ### Update the website after changing the tree

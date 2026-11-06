@@ -24,6 +24,7 @@ import hashlib
 import json
 import os
 import re
+import unicodedata
 from pathlib import Path
 
 SRC = Path(__file__).resolve().parent
@@ -69,22 +70,71 @@ YEAR_RE = re.compile(r"(\d{4})")
 # They are embedded as data: URIs, so --publish encrypts them together with the rest of the data.
 IMG = ROOT / "data" / "img"
 IMG_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
-PHOTO_WARN_BYTES = 300_000
+PHOTO_WARN_BYTES = 800_000
+
+
+PHOTO_DATE_RE = re.compile(r"(?:^|_)(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?$")
+
+
+def _key(text: str) -> str:
+    """'Müller-Lüdenscheidt' -> 'muller_ludenscheidt' (for matching file names to people)"""
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9]+", "_", text).strip("_")
+
+
+def photo_index(people: dict[str, dict]) -> dict[str, list[tuple[str, Path]]]:
+    """person id -> [(date, file)] for every image in data/img/, newest first.
+
+    File names: <ID>[_<date>].<ext>  (recommended, e.g. I81_2019-06-12.jpg, I81_2019.jpg, I81.jpg)
+            or  <Surname>_<Given>[_<date>].<ext>  (only if exactly one person has that name)
+    Date = yyyy, yyyy-mm or yyyy-mm-dd; undated photos sort last.
+    """
+    by_name: dict[str, list[str]] = {}
+    for pid, p in people.items():
+        given = p.get("given", "")
+        for g in {given, given.split(" ")[0]} - {""}:
+            if p.get("surname"):
+                by_name.setdefault(_key(f"{p['surname']}_{g}"), []).append(pid)
+    found: dict[str, list[tuple[str, Path]]] = {}
+    for f in sorted(IMG.glob("*")) if IMG.is_dir() else []:
+        if not f.is_file() or f.suffix.lower() not in IMG_TYPES:
+            continue
+        stem = f.stem
+        m = PHOTO_DATE_RE.search(stem)
+        date = "-".join(x for x in m.groups() if x) if m else ""
+        head = stem[: m.start()] if m else stem
+        pid = head if head in people else None
+        if not pid:
+            ids = sorted(set(by_name.get(_key(head), [])))
+            if len(ids) == 1:
+                pid = ids[0]
+            elif ids:
+                print(f"Warning: {f.name} matches {len(ids)} people ({', '.join(ids)}) - rename it to <ID>_<date>{f.suffix}")
+                continue
+        if not pid:
+            print(f"Warning: {f.name} matches nobody - name it <ID>_<date>{f.suffix} (ID is shown in the viewer)")
+            continue
+        found.setdefault(pid, []).append((date, f))
+    for items in found.values():
+        items.sort(key=lambda x: x[0] or "0000", reverse=True)
+    return found
 
 
 def find_photo(pid: str, row: dict[str, str]) -> Path | None:
-    candidates = [IMG / f"{pid}{ext}" for ext in IMG_TYPES]
+    """Photo linked by Ahnenblatt (OBJE.FILE.n, absolute paths from the original PC) if it is in data/img/."""
     for n in (1, 2, 3):
         linked = clean(row.get(f"OBJE.FILE.{n}"))
-        if linked:  # Ahnenblatt stores absolute Windows paths from the original PC
-            candidates.append(IMG / linked.replace("\\", "/").rsplit("/", 1)[-1])
-    return next((c for c in candidates if c.is_file() and c.suffix.lower() in IMG_TYPES), None)
+        if linked:
+            c = IMG / linked.replace("\\", "/").rsplit("/", 1)[-1]
+            if c.is_file() and c.suffix.lower() in IMG_TYPES:
+                return c
+    return None
 
 
 def photo_uri(path: Path) -> str:
     raw = path.read_bytes()
     if len(raw) > PHOTO_WARN_BYTES:
-        print(f"Warning: {path.name} is {len(raw) // 1000} kB - a ~400 px wide copy is plenty for the viewer.")
+        print(f"Warning: {path.name} is {len(raw) // 1000} kB - a ~1200 px wide copy is plenty for the viewer.")
     return f"data:{IMG_TYPES[path.suffix.lower()]};base64,{base64.b64encode(raw).decode()}"
 
 
@@ -137,10 +187,20 @@ def build(rows: list[dict[str, str]]) -> dict:
             p["by"] = by
         if dy:
             p["dy"] = dy
-        photo = find_photo(pid, r)
-        if photo:
-            p["photo"] = photo_uri(photo)
+        linked = find_photo(pid, r)
+        if linked:
+            p["_linked"] = linked
         people[pid] = p
+
+    # photos: data/img/ files (newest first) + the photo Ahnenblatt links; card shows the newest
+    index = photo_index(people)
+    for pid, p in people.items():
+        items = index.get(pid, [])
+        linked = p.pop("_linked", None)
+        if linked and all(f != linked for _, f in items):
+            items.append(("", linked))
+        if items:
+            p["photos"] = [{"src": photo_uri(f), **({"date": d} if d else {})} for d, f in items]
 
     # Families keyed by (father, mother). Built from child->parent links first,
     # then from spouse links so childless couples also appear.
@@ -248,7 +308,7 @@ def main() -> None:
         (out / "data.js").write_text(
             header + "window.FAMILY_DATA = " + json.dumps(data, ensure_ascii=False) + ";\n",
             encoding="utf-8")
-    photos = sum(1 for p in data["people"] if "photo" in p)
+    photos = sum(len(p.get("photos", [])) for p in data["people"])
     print(f"{len(data['people'])} people, {len(data['families'])} families, {photos} photos -> {out}"
           + (" (encrypted)" if args.publish else ""))
 
