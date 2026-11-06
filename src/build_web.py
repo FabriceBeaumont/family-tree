@@ -99,7 +99,7 @@ def photo_index(people: dict[str, dict]) -> dict[str, list[tuple[str, Path]]]:
     for f in sorted(IMG.glob("*")) if IMG.is_dir() else []:
         if not f.is_file() or f.suffix.lower() not in IMG_TYPES:
             continue
-        stem = f.stem
+        stem = re.sub(r"_\d{1,2}$", "", f.stem)    # counter for several photos of one day: I81_2019-07_2
         m = PHOTO_DATE_RE.search(stem)
         date = "-".join(x for x in m.groups() if x) if m else ""
         head = stem[: m.start()] if m else stem

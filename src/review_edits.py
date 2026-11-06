@@ -13,12 +13,15 @@ Workflow:
        data/cleaned/new_people.tsv (new people, with real I-numbers). The file moves to inbox/done/.
     5. Check the result with `python src/build_web.py`, then publish as usual.
 
-Change file columns: action (set | new), id, column, original, corrected.
+Change file columns: action (set | new | photo), id, column, original, corrected.
+Photo rows: column = date (may be empty), original = original file name, corrected = data: URL (JPEG);
+accepted photos are saved as data/img/<ID>_<date>.jpg (or <ID>.jpg; a _2, _3 … suffix avoids overwriting).
 New people use temporary ids NEW1, NEW2 … which get the next free I-numbers here.
 """
 from __future__ import annotations
 
 import argparse
+import base64
 import csv
 import datetime
 import re
@@ -33,6 +36,18 @@ INBOX = CLEANED / "inbox"
 FIXES = CLEANED / "manual_fixes.tsv"
 NEW_PEOPLE = CLEANED / "new_people.tsv"
 CLEAN_COPY = CLEANED / "family_tree_cleaned.csv"
+IMG = ROOT / "data" / "img"
+
+
+def save_photo(pid: str, date: str, data_url: str) -> Path:
+    raw = base64.b64decode(data_url.split(",", 1)[1])
+    IMG.mkdir(parents=True, exist_ok=True)
+    stem = f"{pid}_{date}" if date else pid
+    target, n = IMG / f"{stem}.jpg", 2
+    while target.exists():
+        target, n = IMG / f"{stem}_{n}.jpg", n + 1
+    target.write_bytes(raw)
+    return target
 
 
 def read_changes(path: Path) -> list[dict[str, str]]:
@@ -132,11 +147,24 @@ def review(path: Path, current: dict[str, dict[str, str]]) -> bool:
             return False
         if a == "y":
             fixes.append(f"{pid}\t{col}\t*\t{new}")
+    saved = []
+    for c in changes:
+        if c["action"] != "photo":
+            continue
+        pid = real.get(c["id"], c["id"])
+        size = len(c["corrected"]) * 3 // 4 // 1000
+        print(f"\nPHOTO for {pid} {name(pid)} – date: {c['column'] or '(none)'} – {size} kB (from {c['original'] or 'upload'})")
+        a = ask("  accept? [y/n/q] ")
+        if a == "q":
+            return False
+        if a == "y":
+            saved.append(save_photo(pid, c["column"], c["corrected"]))
+            print(f"    saved as {saved[-1].relative_to(ROOT)}")
     if fixes:
         append_fixes(fixes, path.name)
     if people:
         append_people(people)
-    print(f"\n{len(fixes)} changes and {len(people)} new people accepted from {path.name}.")
+    print(f"\n{len(fixes)} changes, {len(people)} new people and {len(saved)} photos accepted from {path.name}.")
     (INBOX / "done").mkdir(exist_ok=True)
     shutil.move(str(path), INBOX / "done" / path.name)
     return True

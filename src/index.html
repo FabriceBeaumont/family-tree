@@ -130,6 +130,9 @@
   .editForm .err { grid-column: 1 / -1; color: var(--blood); }
   .editForm .row { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
   .editForm h4 { grid-column: 1 / -1; margin: 4px 0 0; font-size: 13px; }
+  .editForm .row.pending { justify-content: flex-start; align-items: center; gap: 10px; }
+  .editForm .row.pending img, #editsBody .thumb { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: none; }
+  .editForm .row.pending span { flex: 1; color: var(--muted); }
   .editAdd { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
   .editAdd .btn, .editForm .btn, .editsActions .btn { height: 32px; padding: 0 12px; font-size: 13px; background: var(--card); border: 1px solid var(--card-stroke); }
   .btn.primary { background: var(--accent) !important; color: #fff; border-color: transparent !important; }
@@ -515,6 +518,8 @@ const TEXT = {
     editApply: "Übernehmen", editReset: "Zurücksetzen", editBadDate: "Datum bitte als JJJJ, JJJJ-MM oder JJJJ-MM-TT eingeben.",
     editDateHint: "JJJJ, JJJJ-MM oder JJJJ-MM-TT", editNew: "Neu", editAddChild: "+ Kind", editAddParent: "+ Elternteil", editAddPartner: "+ Partner",
     editNewChild: "Neues Kind von {name}", editNewParent: "Neuer Elternteil von {name}", editNewPartner: "Neuer Partner von {name}",
+    editAddPhoto: "Foto auswählen …", editPhotoDate: "Datum des Fotos", editNewPhoto: "neues Foto",
+    editPhotoBad: "Das Bild konnte nicht gelesen werden (JPG, PNG oder WebP).", editStorageFull: "Der Browser-Speicher ist voll – bitte erst die gesammelten Änderungen herunterladen.",
     editAdd: "Hinzufügen", editCancel: "Abbrechen", editParentFull: "Hat schon Vater und Mutter.",
     fGiven: "Vorname(n)", fSurname: "Nachname", fSex: "Geschlecht", fBirthDate: "Geburtsdatum", fBirthPlace: "Geburtsort",
     fDeathDate: "Sterbedatum", fDeathPlace: "Sterbeort", sexM: "männlich", sexF: "weiblich", sexU: "unbekannt",
@@ -586,6 +591,8 @@ const TEXT = {
     editApply: "Apply", editReset: "Reset", editBadDate: "Please enter dates as YYYY, YYYY-MM or YYYY-MM-DD.",
     editDateHint: "YYYY, YYYY-MM or YYYY-MM-DD", editNew: "New", editAddChild: "+ Child", editAddParent: "+ Parent", editAddPartner: "+ Partner",
     editNewChild: "New child of {name}", editNewParent: "New parent of {name}", editNewPartner: "New partner of {name}",
+    editAddPhoto: "Choose photo …", editPhotoDate: "Date of the photo", editNewPhoto: "new photo",
+    editPhotoBad: "The image could not be read (JPG, PNG or WebP).", editStorageFull: "The browser storage is full – please download the collected changes first.",
     editAdd: "Add", editCancel: "Cancel", editParentFull: "Already has a father and a mother.",
     fGiven: "Given name(s)", fSurname: "Surname", fSex: "Sex", fBirthDate: "Date of birth", fBirthPlace: "Place of birth",
     fDeathDate: "Date of death", fDeathPlace: "Place of death", sexM: "male", sexF: "female", sexU: "unknown",
@@ -1570,10 +1577,15 @@ function startViewer(data) {
     ];
     const EDITS_KEY = "stammbaum-edits";
     let editOn = false, adding = null;
-    let edits = { set: {}, add: [], seq: 0 };
+    let edits = { set: {}, add: [], photos: [], seq: 0 };
     try { edits = JSON.parse(localStorage.getItem(EDITS_KEY)) || edits; } catch {}
-    const saveEdits = () => { try { localStorage.setItem(EDITS_KEY, JSON.stringify(edits)); } catch {} updateEditButtons(); };
-    const editCount = () => Object.values(edits.set).reduce((a, o) => a + Object.keys(o).length, 0) + edits.add.length;
+    edits.photos = edits.photos || [];
+    const saveEdits = () => {                        // photos make this bigger: report a full browser storage
+      try { localStorage.setItem(EDITS_KEY, JSON.stringify(edits)); return true; }
+      catch { alert(t("editStorageFull")); return false; }
+      finally { updateEditButtons(); }
+    };
+    const editCount = () => Object.values(edits.set).reduce((a, o) => a + Object.keys(o).length, 0) + edits.add.length + edits.photos.length;
     const fieldValue = (p, col, key) => (edits.set[p.id] && col in edits.set[p.id]) ? edits.set[p.id][col] : (p[key] || "");
     const isDate = v => !v || /^\d{4}(-\d{2}(-\d{2})?)?$/.test(v);
     function input(col, kind, value, changed) {
@@ -1602,11 +1614,43 @@ function startViewer(data) {
           <div class="row"><button type="button" class="btn" data-edit="reset">${t("editReset")}</button><button type="button" class="btn primary" data-edit="apply">${t("editApply")}</button></div></form>
         <div class="editAdd"><button type="button" class="btn" data-edit="child">${t("editAddChild")}</button>
           <button type="button" class="btn" data-edit="parent"${hasBothParents ? ` disabled title="${esc(t("editParentFull"))}"` : ""}>${t("editAddParent")}</button>
-          <button type="button" class="btn" data-edit="partner">${t("editAddPartner")}</button></div>${addForm}`;
+          <button type="button" class="btn" data-edit="partner">${t("editAddPartner")}</button></div>${addForm}
+        <form class="editForm" data-photoform>
+          <h4>${t("photos")} (${(p.photos || []).length})</h4>
+          ${edits.photos.filter(ph => ph.id === p.id).map(ph => `<div class="row pending"><img src="${ph.src}" alt=""><span>${esc(ph.date ? fmtDate(ph.date) : t("photoUndated"))} · ${t("editNew")}</span><button type="button" class="btn" data-edit="photoDel:${ph.key}">×</button></div>`).join("")}
+          <label>${t("editPhotoDate")}</label><input name="PDATE" placeholder="${esc(t("editDateHint"))}">
+          <div class="err" hidden></div>
+          <div class="row"><input type="file" name="PFILE" accept="image/jpeg,image/png,image/webp" hidden><button type="button" class="btn primary" data-edit="photoPick">${t("editAddPhoto")}</button></div>
+        </form>`;
     }
     const formValues = form => Object.fromEntries([...form.elements].filter(el => el.name).map(el => [el.name, el.value.trim()]));
+    // shrink a picked image to at most 1600 px (JPEG) so it fits into the browser storage and the file
+    async function shrinkImage(file) {
+      const img = await createImageBitmap(file), scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+      const c = Object.assign(document.createElement("canvas"), { width: Math.round(img.width * scale), height: Math.round(img.height * scale) });
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      return c.toDataURL("image/jpeg", 0.85);
+    }
     function editAction(what) {
       const p = people.get(selected), body = document.getElementById("panelBody");
+      if (what === "photoPick") {
+        const form = body.querySelector("[data-photoform]"), date = form.elements.PDATE.value.trim(), err = form.querySelector(".err");
+        if (!isDate(date)) { err.hidden = false; err.textContent = t("editBadDate"); return; }
+        const picker = form.elements.PFILE;
+        picker.onchange = async () => {
+          const file = picker.files[0]; if (!file) return;
+          try {
+            const src = await shrinkImage(file);
+            edits.photos.push({ key: "P" + (++edits.seq), id: p.id, date, src, name: file.name });
+            if (!saveEdits()) edits.photos.pop();
+          } catch { err.hidden = false; err.textContent = t("editPhotoBad"); return; }
+          showPanel(p);
+        };
+        return picker.click();
+      }
+      if (what.startsWith("photoDel:")) {
+        edits.photos = edits.photos.filter(ph => ph.key !== what.slice(9)); saveEdits(); return showPanel(p);
+      }
       if (["child", "parent", "partner"].includes(what)) { adding = what; return showPanel(p); }
       if (what === "cancelAdd") { adding = null; return showPanel(p); }
       if (what === "reset") { delete edits.set[p.id]; saveEdits(); return showPanel(p); }
@@ -1677,6 +1721,7 @@ function startViewer(data) {
         const p = people.get(pid), key = (EDIT_FIELDS.find(x => x[0] === col) || [])[1];
         items.push(`<li><span class="what"><b>${esc(fullName(p))}</b> · ${esc(colLabel(col))}: <del>${esc((key && p[key]) || "–")}</del> → <ins>${esc(val || "–")}</ins></span><button class="x" data-del="set|${pid}|${col}" aria-label="×">×</button></li>`);
       }
+      for (const ph of edits.photos) items.push(`<li><img class="thumb" src="${ph.src}" alt=""><span class="what"><b>${esc(fullName(people.get(ph.id)))}</b> · ${t("editNewPhoto")} (${esc(ph.date ? fmtDate(ph.date) : t("photoUndated"))})</span><button class="x" data-del="photo|${ph.key}" aria-label="×">×</button></li>`);
       for (const a of edits.add) items.push(`<li><span class="what"><b>${t("editNew")}: ${esc([a.cols.GIVN, a.cols.SURN].filter(Boolean).join(" "))}</b> · ${esc(a.note)}</span><button class="x" data-del="add|${a.id}" aria-label="×">×</button></li>`);
       document.getElementById("editsBody").innerHTML = (items.length ? `<ul>${items.join("")}</ul>` : `<p>${t("editsNone")}</p>`) + `<p class="sub">${t("editsHint")}</p>`;
       document.getElementById("editsDownload").textContent = t("editsDownload");
@@ -1688,7 +1733,8 @@ function startViewer(data) {
     document.getElementById("editsBody").addEventListener("click", ev => {
       const b = ev.target.closest("[data-del]"); if (!b) return;
       const [kind, id, col] = b.dataset.del.split("|");
-      if (kind === "set") { delete edits.set[id][col]; if (!Object.keys(edits.set[id]).length) delete edits.set[id]; }
+      if (kind === "photo") edits.photos = edits.photos.filter(ph => ph.key !== id);
+      else if (kind === "set") { delete edits.set[id][col]; if (!Object.keys(edits.set[id]).length) delete edits.set[id]; }
       else {                                          // a removed new person also loses its links
         edits.add = edits.add.filter(a => a.id !== id);
         for (const [pid, cols] of Object.entries(edits.set)) for (const [c, v] of Object.entries(cols)) if (v === "@" + id + "@") delete cols[c];
@@ -1697,7 +1743,7 @@ function startViewer(data) {
     });
     document.getElementById("editsDiscard").onclick = () => {
       if (!confirm(t("editsDiscardAsk"))) return;
-      edits = { set: {}, add: [], seq: 0 }; saveEdits(); renderEdits(); if (selected) showPanel(people.get(selected));
+      edits = { set: {}, add: [], photos: [], seq: 0 }; saveEdits(); renderEdits(); if (selected) showPanel(people.get(selected));
     };
     document.getElementById("editsDownload").onclick = () => {
       const clean = v => String(v).replace(/\t/g, " ").replace(/\r?\n|\r/g, "\\n");
@@ -1706,6 +1752,7 @@ function startViewer(data) {
         const key = (EDIT_FIELDS.find(x => x[0] === col) || [])[1], p = people.get(pid);
         lines.push(["set", pid, col, clean((key && p[key]) || ""), clean(val)].join("\t"));
       }
+      for (const ph of edits.photos) lines.push(["photo", ph.id, ph.date || "", clean(ph.name || ""), ph.src].join("\t"));
       for (const a of edits.add) for (const [col, val] of Object.entries(a.cols)) lines.push(["new", a.id, col, "", clean(val)].join("\t"));
       const d = new Date(), two = n => String(n).padStart(2, "0");    // local time, sorts by date
       const stamp = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}_${two(d.getHours())}-${two(d.getMinutes())}`;
