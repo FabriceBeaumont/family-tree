@@ -6,7 +6,7 @@ Usage:
 
 Workflow:
     1. In the viewer (opened with ?admin) switch on ✏️, edit, then download the change file.
-    2. Put the downloaded edits_*.tsv into data/cleaned/inbox/.
+    2. Put the downloaded <date>_<time>_edits.tsv into data/cleaned/inbox/.
     3. Run this script: every change is shown (current value -> new value); answer
        y = accept, n = reject, q = stop (the rest stays in the inbox for later).
     4. Accepted changes are appended to data/cleaned/manual_fixes.tsv (field changes) and

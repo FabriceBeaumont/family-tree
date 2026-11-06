@@ -137,6 +137,7 @@
   #editsBox[open] { display: flex; flex-direction: column; }
   #editsBox::backdrop { background: rgba(0, 0, 0, .35); }
   #editsBody { overflow: auto; padding: 4px 20px 12px; font-size: 14px; }
+  #editsBody .sub { color: var(--muted); font-size: 13px; margin: 12px 0 0; }
   #editsBody li { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--card-stroke); list-style: none; }
   #editsBody ul { margin: 0; padding: 0; }
   #editsBody .what { flex: 1; } #editsBody del { color: var(--muted); } #editsBody ins { text-decoration: none; font-weight: 600; }
@@ -333,9 +334,9 @@
     color: var(--ink); background: var(--card); overflow: hidden; }
   #help[open] { display: flex; flex-direction: column; }
   #help::backdrop { background: rgba(0, 0, 0, .35); }
-  #help .helpHead { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 8px; }
-  #help h2 { margin: 0; font-size: 20px; letter-spacing: -.02em; }
-  #help .close { width: 30px; height: 30px; border: 0; border-radius: 50%; background: var(--fill); color: var(--muted);
+  #help .helpHead, #editsBox .helpHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 16px 8px 20px; }
+  #help h2, #editsBox h2 { margin: 0; font-size: 20px; line-height: 1.25; letter-spacing: -.02em; }
+  #help .close, #editsBox .close { flex: none; width: 30px; height: 30px; border: 0; border-radius: 50%; background: var(--fill); color: var(--muted);
     font-size: 18px; cursor: pointer; }
   #helpBody { overflow: auto; padding: 4px 20px 20px; font-size: 14px; line-height: 1.45; }
   #helpBody h3 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 16px 0 6px; }
@@ -1706,9 +1707,10 @@ function startViewer(data) {
         lines.push(["set", pid, col, clean((key && p[key]) || ""), clean(val)].join("\t"));
       }
       for (const a of edits.add) for (const [col, val] of Object.entries(a.cols)) lines.push(["new", a.id, col, "", clean(val)].join("\t"));
-      const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+      const d = new Date(), two = n => String(n).padStart(2, "0");    // local time, sorts by date
+      const stamp = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}_${two(d.getHours())}-${two(d.getMinutes())}`;
       const url = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], { type: "text/tab-separated-values" }));
-      const link = Object.assign(document.createElement("a"), { href: url, download: `edits_${stamp}.tsv` });
+      const link = Object.assign(document.createElement("a"), { href: url, download: `${stamp}_edits.tsv` });
       document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
     };
     langListeners.push(() => { updateEditButtons(); if (editsBox.open) renderEdits(); });
