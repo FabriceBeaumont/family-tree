@@ -115,7 +115,9 @@
   #photoBox .pbNav[hidden] { display: none; }
   #photoBox button:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 70%, transparent); }
   #panel .sub .pid { cursor: help; font-variant-numeric: tabular-nums; }
-  #panel .phead { display: flex; align-items: center; gap: 12px; margin-right: 36px; }
+  /* photo circle top-aligned: its edge sits ~3 px above the cap height of the name */
+  #panel .phead { display: flex; align-items: flex-start; gap: 12px; margin-right: 36px; }
+  #panel .phead .pthumb { margin-top: 2px; }
   #panel .phead .pname { min-width: 0; }
   #panel .phead h2 { margin-right: 0; }
   #panel .pthumb { flex: none; width: 56px; height: 56px; padding: 0; border: 2px solid var(--card-stroke); border-radius: 50%;
