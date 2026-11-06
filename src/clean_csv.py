@@ -128,6 +128,8 @@ class Cleaner:
     def parse_date(s: str) -> str | None:
         if m := re.fullmatch(r"(\d{1,2})\.(\d{1,2})\.(\d{4})", s):
             return f"{m[3]}-{int(m[2]):02d}-{int(m[1]):02d}"
+        if m := re.fullmatch(r"(\d{4})-(\d{2})(?:-(\d{2}))?", s):          # already ISO (from the editor)
+            return s
         if m := re.fullmatch(r"(?:im\s+jahre?\s+)?(\d{4})", s, re.I):
             return m[1]
         if m := re.fullmatch(r"(?:im\s+)?([A-Za-zäÄ]+)\s+(\d{4})", s, re.I):
@@ -356,7 +358,8 @@ def read_tsv(path: Path) -> list[dict[str, str]]:
 
 
 def read_fixes(path: Path) -> list[tuple[str, str, str, str]]:
-    return [(r["id"], r["column"], r["original"], r["corrected"]) for r in read_tsv(path)]
+    nl = lambda v: v.replace("\\n", "\r")      # line breaks (notes) are stored as \n in the tab file
+    return [(r["id"], r["column"], nl(r["original"]), nl(r["corrected"])) for r in read_tsv(path)]
 
 
 def read_countries(path: Path) -> dict[str, str]:

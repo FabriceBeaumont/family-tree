@@ -77,6 +77,11 @@ a password and published with GitHub Pages.
 every change and a list of values that still need a decision. Corrections that are specific to this
 family live in private files next to it (`manual_fixes.tsv`, `place_countries.tsv`, `new_people.tsv`).
 
+**Editing:** open the viewer with `?admin` at the end of the address (e.g. `…/family-tree/?admin`) to get
+the ✏️ button. Changes are only collected in your browser and downloaded as a file; nothing is saved
+online. Put the file into `data/cleaned/inbox/` and run `python src/review_edits.py`: it shows every
+change and only what you accept goes into the private fix files. Then publish as usual.
+
 **Photos:** put them into `data/img/`. Name each file after the person's ID (shown at the top of the
 person's info panel, e.g. `I81`) plus an optional date: `I81_2019-06-12.jpg`, `I81_2019-06.jpg`,
 `I81_2019.jpg` or just `I81.jpg`. `Surname_Given_2019.jpg` also works, but only if exactly one person

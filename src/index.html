@@ -115,6 +115,33 @@
   #photoBox .pbNav[hidden] { display: none; }
   #photoBox button:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 70%, transparent); }
   #panel .sub .pid { cursor: help; font-variant-numeric: tabular-nums; }
+  /* ✏️ edit mode (admin, opened with ?admin) */
+  .modeBtn[aria-pressed="true"].edit { background: color-mix(in srgb, var(--accent) 30%, var(--card)); border: 2px solid var(--accent); }
+  #btnEdits[hidden], #btnEdit[hidden] { display: none; }
+  #btnEdits { color: var(--accent); font-weight: 600; }
+  .editForm { display: grid; grid-template-columns: 104px 1fr; gap: 8px 10px; align-items: center; margin: 0 0 12px;
+    background: var(--fill); border-radius: var(--radius); padding: 12px; font-size: 13px; }
+  .editForm label { color: var(--muted); }
+  .editForm input, .editForm select, .editForm textarea { width: 100%; min-height: 32px; padding: 5px 8px; border: 1px solid var(--card-stroke);
+    border-radius: 8px; background: var(--card); color: var(--ink); font: inherit; font-size: 14px; }
+  .editForm textarea { min-height: 64px; resize: vertical; }
+  .editForm .changed { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
+  .editForm .hint { grid-column: 2; margin-top: -4px; color: var(--muted); font-size: 11px; }
+  .editForm .err { grid-column: 1 / -1; color: var(--blood); }
+  .editForm .row { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+  .editForm h4 { grid-column: 1 / -1; margin: 4px 0 0; font-size: 13px; }
+  .editAdd { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+  .editAdd .btn, .editForm .btn, .editsActions .btn { height: 32px; padding: 0 12px; font-size: 13px; background: var(--card); border: 1px solid var(--card-stroke); }
+  .btn.primary { background: var(--accent) !important; color: #fff; border-color: transparent !important; }
+  #editsBox { width: min(620px, calc(100% - 32px)); max-height: min(85vh, 760px); padding: 0; border-radius: 18px; color: var(--ink); background: var(--card); }
+  #editsBox[open] { display: flex; flex-direction: column; }
+  #editsBox::backdrop { background: rgba(0, 0, 0, .35); }
+  #editsBody { overflow: auto; padding: 4px 20px 12px; font-size: 14px; }
+  #editsBody li { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--card-stroke); list-style: none; }
+  #editsBody ul { margin: 0; padding: 0; }
+  #editsBody .what { flex: 1; } #editsBody del { color: var(--muted); } #editsBody ins { text-decoration: none; font-weight: 600; }
+  #editsBody .x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 16px; }
+  .editsActions { display: flex; justify-content: space-between; gap: 8px; padding: 12px 20px 18px; }
   /* photo circle top-aligned: its edge sits ~3 px above the cap height of the name */
   #panel .phead { display: flex; align-items: flex-start; gap: 12px; margin-right: 36px; }
   #panel .phead .pthumb { margin-top: 2px; }
@@ -406,6 +433,8 @@
   </div>
   <button type="button" class="btn glass modeBtn blood" id="btn-blood" aria-pressed="false"><span aria-hidden="true">🩸</span></button>
   <button type="button" class="btn glass modeBtn tree" id="btn-tree" aria-pressed="false"><span aria-hidden="true">🌳</span></button>
+  <button type="button" class="btn glass modeBtn edit" id="btnEdit" aria-pressed="false" hidden data-i18n-attr="title:editHelp;aria-label:editMode"><span aria-hidden="true">✏️</span></button>
+  <button type="button" class="btn glass" id="btnEdits" hidden><span class="lbl"></span></button>
   <button type="button" class="btn glass modeBtn time" id="btnTime" aria-pressed="false" data-i18n-attr="title:timeHelp;aria-label:centuries"><span aria-hidden="true">🕰️</span></button>
   <button type="button" class="btn glass modeBtn rel" id="btnRel" aria-pressed="false" data-i18n-attr="title:relHelp;aria-label:relations"><span aria-hidden="true">👪</span></button>
   <button class="btn glass" id="btnPhotos" aria-pressed="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.6"/><circle cx="8" cy="6.4" r="2.2"/><path d="M3.9 12.7c.8-1.8 2.3-2.7 4.1-2.7s3.3.9 4.1 2.7"/></svg><span class="lbl" data-i18n="photos">Fotos</span></button>
@@ -423,6 +452,11 @@
 <dialog id="help" class="glass" aria-labelledby="helpHeading">
   <div class="helpHead"><h2 id="helpHeading"></h2><button type="button" class="close" id="helpClose" data-i18n-attr="aria-label:helpClose;title:helpClose">×</button></div>
   <div id="helpBody"></div>
+</dialog>
+<dialog id="editsBox" class="glass" aria-labelledby="editsHeading">
+  <div class="helpHead"><h2 id="editsHeading"></h2><button type="button" class="close" id="editsClose" data-i18n-attr="aria-label:helpClose;title:helpClose">×</button></div>
+  <div id="editsBody"></div>
+  <div class="editsActions"><button type="button" class="btn" id="editsDiscard"></button><button type="button" class="btn primary" id="editsDownload"></button></div>
 </dialog>
 <dialog id="photoBox" aria-labelledby="photoName">
   <button type="button" class="pbClose" id="pbClose" data-i18n-attr="aria-label:helpClose;title:helpClose">×</button>
@@ -473,6 +507,16 @@ const TEXT = {
     gensHelp: "Begrenzt die direkte Linie der ausgewählten Person: ↑ wie viele Generationen Vorfahren, ↓ wie viele Generationen Nachkommen. Leer = alle. Mit Fokus werden nur diese Generationen gezeigt.",
     photos: "Fotos", photosHide: "Fotos ausblenden", photosShow: "Fotos einblenden",
     selectFirst: "Zuerst eine Person auswählen.",
+    editMode: "Bearbeiten", editHelp: "Bearbeiten (nur für dich): Angaben ändern und Personen hinzufügen. Änderungen werden nur in diesem Browser gesammelt; als Datei herunterladen, mit review_edits.py prüfen, dann veröffentlichen.",
+    editsCount: "Änderungen ({n})", editsTitle: "Gesammelte Änderungen", editsNone: "Noch keine Änderungen.",
+    editsDownload: "Als Datei herunterladen", editsDiscard: "Alle verwerfen", editsDiscardAsk: "Alle gesammelten Änderungen verwerfen?",
+    editsHint: "Datei nach data/cleaned/inbox/ legen und python src/review_edits.py ausführen – dort wird jede Änderung einzeln bestätigt.",
+    editApply: "Übernehmen", editReset: "Zurücksetzen", editBadDate: "Datum bitte als JJJJ, JJJJ-MM oder JJJJ-MM-TT eingeben.",
+    editDateHint: "JJJJ, JJJJ-MM oder JJJJ-MM-TT", editNew: "Neu", editAddChild: "+ Kind", editAddParent: "+ Elternteil", editAddPartner: "+ Partner",
+    editNewChild: "Neues Kind von {name}", editNewParent: "Neuer Elternteil von {name}", editNewPartner: "Neuer Partner von {name}",
+    editAdd: "Hinzufügen", editCancel: "Abbrechen", editParentFull: "Hat schon Vater und Mutter.",
+    fGiven: "Vorname(n)", fSurname: "Nachname", fSex: "Geschlecht", fBirthDate: "Geburtsdatum", fBirthPlace: "Geburtsort",
+    fDeathDate: "Sterbedatum", fDeathPlace: "Sterbeort", sexM: "männlich", sexF: "weiblich", sexU: "unbekannt",
     photoPrev: "Vorheriges Foto", photoNext: "Nächstes Foto", photoUndated: "ohne Datum", photoOpen: "Foto vergrößern",
     personId: "Personen-ID – für Fotos: {id}_JJJJ-MM-TT.jpg in data/img/ ablegen",
     helpTitle: "Hilfe: so funktioniert der Stammbaum", helpClose: "Schließen",
@@ -534,6 +578,16 @@ const TEXT = {
     gensHelp: "Limits the selected person's direct line: ↑ how many generations of ancestors, ↓ how many generations of descendants. Empty = all. With Focus, only these generations are shown.",
     photos: "Photos", photosHide: "Hide photos", photosShow: "Show photos",
     selectFirst: "Select a person first.",
+    editMode: "Edit", editHelp: "Edit (for you only): change details and add people. Changes are only collected in this browser; download them as a file, check them with review_edits.py, then publish.",
+    editsCount: "Changes ({n})", editsTitle: "Collected changes", editsNone: "No changes yet.",
+    editsDownload: "Download as file", editsDiscard: "Discard all", editsDiscardAsk: "Discard all collected changes?",
+    editsHint: "Put the file into data/cleaned/inbox/ and run python src/review_edits.py – every change is confirmed there one by one.",
+    editApply: "Apply", editReset: "Reset", editBadDate: "Please enter dates as YYYY, YYYY-MM or YYYY-MM-DD.",
+    editDateHint: "YYYY, YYYY-MM or YYYY-MM-DD", editNew: "New", editAddChild: "+ Child", editAddParent: "+ Parent", editAddPartner: "+ Partner",
+    editNewChild: "New child of {name}", editNewParent: "New parent of {name}", editNewPartner: "New partner of {name}",
+    editAdd: "Add", editCancel: "Cancel", editParentFull: "Already has a father and a mother.",
+    fGiven: "Given name(s)", fSurname: "Surname", fSex: "Sex", fBirthDate: "Date of birth", fBirthPlace: "Place of birth",
+    fDeathDate: "Date of death", fDeathPlace: "Place of death", sexM: "male", sexF: "female", sexU: "unknown",
     photoPrev: "Previous photo", photoNext: "Next photo", photoUndated: "undated", photoOpen: "Enlarge photo",
     personId: "Person ID – for photos, put {id}_YYYY-MM-DD.jpg into data/img/",
     helpTitle: "Help: how the family tree works", helpClose: "Close",
@@ -1484,7 +1538,7 @@ function startViewer(data) {
       document.getElementById("panelBody").innerHTML = `
         <div class="phead">${p.photos && p.photos.length ? `<button type="button" class="pthumb" data-photo title="${esc(t("photoOpen"))}" aria-label="${esc(t("photoOpen"))}"><img src="${p.photos[0].src}" alt=""></button>` : ""}<div class="pname">
         <h2>${esc([p.title, fullName(p)].filter(Boolean).join(" "))}</h2><div class="sub">${esc(lifeSpan(p)) || "&nbsp;"}${(g => g ? ` · <span class="gen" title="${esc(t("generationRange").replace("{from}", g.from).replace("{to}", g.to))}">${esc(g[lang])}</span>` : "")(generationOf(p.by))} · <span class="pid" title="${esc(t("personId").replace("{id}", p.id))}">${p.id}</span></div></div></div>
-        ${rows.length ? `<dl>${rows.map(([k, v]) => `<dt>${t(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : ""}
+        ${editOn ? editForm(p) : rows.length ? `<dl>${rows.map(([k, v]) => `<dt>${t(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : ""}
         ${chipList(t("parents"), parents)}
         ${spouses ? `<h3>${t("partners")}</h3>${spouses}` : ""}
         ${chipList(t("children"), children)}
@@ -1493,12 +1547,172 @@ function startViewer(data) {
     }
     document.getElementById("panelBody").addEventListener("click", ev => {
       if (ev.target.closest("[data-photo]")) return openPhotos(people.get(selected));   // same window as on the card
+      const ea = ev.target.closest("[data-edit]");
+      if (ea) return editAction(ea.dataset.edit);
       const b = ev.target.closest("[data-id]"); if (b) select(b.dataset.id, true);
     });
     langListeners.push(() => { applyHighlight(); if (selected) showPanel(people.get(selected)); syncPanel(); });
     document.addEventListener("keydown", ev => {      // Esc folds the panel away; the person stays selected
       if (ev.key === "Escape" && selected && !panelCollapsed && !document.getElementById("help").open && !document.getElementById("photoBox").open) setCollapsed(true);
     });
+
+    // ---------- ✏️ edit mode: collect changes in this browser, export them for review ----------
+    // Only shown with ?admin. Nothing is saved online: the change file goes through review_edits.py.
+    const ADMIN = new URLSearchParams(location.search).has("admin");
+    const EDIT_FIELDS = [   // CSV column, person key, label, kind
+      ["GIVN", "given", "fGiven"], ["SURN", "surname", "fSurname"], ["NAME._RUFNAME", "callName", "callName"],
+      ["NICK", "nick", "nick"], ["TITL", "title", "persTitle"], ["SEX", "sex", "fSex", "sex"],
+      ["BIRT.DATE", "birthDate", "fBirthDate", "date"], ["BIRT.PLAC", "birthPlace", "fBirthPlace"],
+      ["DEAT.DATE", "deathDate", "fDeathDate", "date"], ["DEAT.PLAC", "deathPlace", "fDeathPlace"],
+      ["OCCU", "occupation", "occupation"], ["RELI", "religion", "religion"], ["ADDR.LAST", "addrLast", "addrLast"],
+      ["PHON", "phone", "phone"], ["NOTE", "note", "note", "text"],
+    ];
+    const EDITS_KEY = "stammbaum-edits";
+    let editOn = false, adding = null;
+    let edits = { set: {}, add: [], seq: 0 };
+    try { edits = JSON.parse(localStorage.getItem(EDITS_KEY)) || edits; } catch {}
+    const saveEdits = () => { try { localStorage.setItem(EDITS_KEY, JSON.stringify(edits)); } catch {} updateEditButtons(); };
+    const editCount = () => Object.values(edits.set).reduce((a, o) => a + Object.keys(o).length, 0) + edits.add.length;
+    const fieldValue = (p, col, key) => (edits.set[p.id] && col in edits.set[p.id]) ? edits.set[p.id][col] : (p[key] || "");
+    const isDate = v => !v || /^\d{4}(-\d{2}(-\d{2})?)?$/.test(v);
+    function input(col, kind, value, changed) {
+      const cls = changed ? ' class="changed"' : "";
+      if (kind === "sex") return `<select name="${col}"${cls}>${["M", "F", "U"].map(x => `<option value="${x}"${value === x ? " selected" : ""}>${t("sex" + x)}</option>`).join("")}</select>`;
+      if (kind === "text") return `<textarea name="${col}"${cls}>${esc(value.replace(/\r/g, "\n"))}</textarea>`;
+      return `<input name="${col}" value="${esc(value)}"${kind === "date" ? ` placeholder="${esc(t("editDateHint"))}"` : ""}${cls}>`;
+    }
+    function editForm(p) {
+      const fields = EDIT_FIELDS.map(([col, key, label, kind]) => {
+        const v = fieldValue(p, col, key), changed = edits.set[p.id] && col in edits.set[p.id];
+        return `<label>${t(label)}</label>${input(col, kind, v, changed)}`;
+      }).join("");
+      const pf = p.parentFam && fams.get(p.parentFam), hasBothParents = pf && pf.husband && pf.wife;
+      const addForm = adding ? `<form class="editForm" data-addform>
+          <h4>${esc(t({ child: "editNewChild", parent: "editNewParent", partner: "editNewPartner" }[adding]).replace("{name}", fullName(p)))}</h4>
+          <label>${t("fGiven")}</label><input name="GIVN">
+          <label>${t("fSurname")}</label><input name="SURN" value="${esc(adding === "child" ? (p.sex === "M" ? p.surname : "") : adding === "parent" ? p.surname : "")}">
+          <label>${t("fSex")}</label>${input("SEX", "sex", adding === "partner" ? (p.sex === "M" ? "F" : p.sex === "F" ? "M" : "U") : "U", false)}
+          <label>${t("fBirthDate")}</label><input name="BIRT.DATE" placeholder="${esc(t("editDateHint"))}">
+          <label>${t("fBirthPlace")}</label><input name="BIRT.PLAC">
+          <div class="err" hidden></div>
+          <div class="row"><button type="button" class="btn" data-edit="cancelAdd">${t("editCancel")}</button><button type="button" class="btn primary" data-edit="saveAdd">${t("editAdd")}</button></div>
+        </form>` : "";
+      return `<form class="editForm" data-editform>${fields}<div class="err" hidden></div>
+          <div class="row"><button type="button" class="btn" data-edit="reset">${t("editReset")}</button><button type="button" class="btn primary" data-edit="apply">${t("editApply")}</button></div></form>
+        <div class="editAdd"><button type="button" class="btn" data-edit="child">${t("editAddChild")}</button>
+          <button type="button" class="btn" data-edit="parent"${hasBothParents ? ` disabled title="${esc(t("editParentFull"))}"` : ""}>${t("editAddParent")}</button>
+          <button type="button" class="btn" data-edit="partner">${t("editAddPartner")}</button></div>${addForm}`;
+    }
+    const formValues = form => Object.fromEntries([...form.elements].filter(el => el.name).map(el => [el.name, el.value.trim()]));
+    function editAction(what) {
+      const p = people.get(selected), body = document.getElementById("panelBody");
+      if (["child", "parent", "partner"].includes(what)) { adding = what; return showPanel(p); }
+      if (what === "cancelAdd") { adding = null; return showPanel(p); }
+      if (what === "reset") { delete edits.set[p.id]; saveEdits(); return showPanel(p); }
+      const form = body.querySelector(what === "saveAdd" ? "[data-addform]" : "[data-editform]");
+      const v = formValues(form), err = form.querySelector(".err");
+      const bad = Object.entries(v).some(([col, val]) => /\.DATE$/.test(col) && !isDate(val));
+      if (bad) { err.hidden = false; err.textContent = t("editBadDate"); return; }
+      if (what === "apply") {
+        const changes = {};
+        for (const [col, key, , kind] of EDIT_FIELDS) {
+          let nv = v[col] ?? "";
+          if (kind === "text") nv = nv.replace(/\n/g, "\r");
+          const ov = col === "SEX" ? (p.sex || "U") : (p[key] || "");
+          if (nv !== ov) changes[col] = nv;
+        }
+        const links = Object.fromEntries(Object.entries(edits.set[p.id] || {}).filter(([c]) => !EDIT_FIELDS.some(f => f[0] === c)));
+        const all = { ...links, ...changes };          // keep parent links made with "+ Elternteil"
+        if (Object.keys(all).length) edits.set[p.id] = all; else delete edits.set[p.id];
+        saveEdits(); return showPanel(p);
+      }
+      if (what === "saveAdd") {                       // new person with a temporary id NEWn
+        if (!v.GIVN && !v.SURN) { err.hidden = false; err.textContent = t("fGiven") + " / " + t("fSurname") + "?"; return; }
+        const id = "NEW" + (++edits.seq), cols = { GIVN: v.GIVN, SURN: v.SURN, SEX: v.SEX };
+        if (v["BIRT.DATE"]) cols["BIRT.DATE"] = v["BIRT.DATE"];
+        if (v["BIRT.PLAC"]) cols["BIRT.PLAC"] = v["BIRT.PLAC"];
+        let note = "";
+        if (adding === "child") {
+          const partners = p.spouseFams.map(fid => { const f = fams.get(fid); return f.husband === p.id ? f.wife : f.husband; }).filter(Boolean);
+          const other = partners.length === 1 ? people.get(partners[0]) : null;
+          const father = p.sex === "M" ? p : other && other.sex === "M" ? other : null;
+          const mother = p.sex !== "M" ? p : other && other.sex !== "M" ? other : null;
+          if (father) cols["FATH.#REFN"] = father.id;
+          if (mother && mother !== father) cols["MOTH.#REFN"] = mother.id;
+          note = t("editNewChild").replace("{name}", fullName(p));
+        } else if (adding === "parent") {
+          const pf = p.parentFam && fams.get(p.parentFam);
+          const slot = v.SEX === "M" || (pf && pf.wife && !pf.husband) ? "FATH.#REFN" : "MOTH.#REFN";
+          edits.set[p.id] = { ...(edits.set[p.id] || {}), [slot]: "@" + id + "@" };
+          note = t("editNewParent").replace("{name}", fullName(p));
+        } else {
+          const husbandIsNew = v.SEX === "M" && p.sex !== "M";
+          cols["FAM.HUSB.1"] = "@" + (husbandIsNew ? id : p.id) + "@";
+          cols["FAM.WIFE.1"] = "@" + (husbandIsNew ? p.id : id) + "@";
+          note = t("editNewPartner").replace("{name}", fullName(p));
+        }
+        edits.add.push({ id, cols, note });
+        adding = null; saveEdits(); return showPanel(p);
+      }
+    }
+    function updateEditButtons() {
+      const be = document.getElementById("btnEdit"), bs = document.getElementById("btnEdits");
+      be.hidden = !ADMIN;
+      be.setAttribute("aria-pressed", editOn);
+      bs.hidden = !ADMIN || !editOn;
+      bs.querySelector(".lbl").textContent = t("editsCount").replace("{n}", editCount());
+    }
+    document.getElementById("btnEdit").onclick = () => {
+      editOn = !editOn; adding = null; updateEditButtons();
+      if (selected) showPanel(people.get(selected));
+    };
+    // collected changes: list, remove single ones, download as a tab file for review_edits.py
+    const editsBox = document.getElementById("editsBox");
+    const colLabel = col => { const f = EDIT_FIELDS.find(x => x[0] === col); return f ? t(f[2]) : col; };
+    function renderEdits() {
+      document.getElementById("editsHeading").textContent = t("editsTitle");
+      const items = [];
+      for (const [pid, cols] of Object.entries(edits.set)) for (const [col, val] of Object.entries(cols)) {
+        const p = people.get(pid), key = (EDIT_FIELDS.find(x => x[0] === col) || [])[1];
+        items.push(`<li><span class="what"><b>${esc(fullName(p))}</b> · ${esc(colLabel(col))}: <del>${esc((key && p[key]) || "–")}</del> → <ins>${esc(val || "–")}</ins></span><button class="x" data-del="set|${pid}|${col}" aria-label="×">×</button></li>`);
+      }
+      for (const a of edits.add) items.push(`<li><span class="what"><b>${t("editNew")}: ${esc([a.cols.GIVN, a.cols.SURN].filter(Boolean).join(" "))}</b> · ${esc(a.note)}</span><button class="x" data-del="add|${a.id}" aria-label="×">×</button></li>`);
+      document.getElementById("editsBody").innerHTML = (items.length ? `<ul>${items.join("")}</ul>` : `<p>${t("editsNone")}</p>`) + `<p class="sub">${t("editsHint")}</p>`;
+      document.getElementById("editsDownload").textContent = t("editsDownload");
+      document.getElementById("editsDiscard").textContent = t("editsDiscard");
+      document.getElementById("editsDownload").disabled = !items.length;
+    }
+    document.getElementById("btnEdits").onclick = () => { renderEdits(); editsBox.showModal(); };
+    document.getElementById("editsClose").onclick = () => editsBox.close();
+    document.getElementById("editsBody").addEventListener("click", ev => {
+      const b = ev.target.closest("[data-del]"); if (!b) return;
+      const [kind, id, col] = b.dataset.del.split("|");
+      if (kind === "set") { delete edits.set[id][col]; if (!Object.keys(edits.set[id]).length) delete edits.set[id]; }
+      else {                                          // a removed new person also loses its links
+        edits.add = edits.add.filter(a => a.id !== id);
+        for (const [pid, cols] of Object.entries(edits.set)) for (const [c, v] of Object.entries(cols)) if (v === "@" + id + "@") delete cols[c];
+      }
+      saveEdits(); renderEdits(); if (selected) showPanel(people.get(selected));
+    });
+    document.getElementById("editsDiscard").onclick = () => {
+      if (!confirm(t("editsDiscardAsk"))) return;
+      edits = { set: {}, add: [], seq: 0 }; saveEdits(); renderEdits(); if (selected) showPanel(people.get(selected));
+    };
+    document.getElementById("editsDownload").onclick = () => {
+      const clean = v => String(v).replace(/\t/g, " ").replace(/\r?\n|\r/g, "\\n");
+      const lines = ["action\tid\tcolumn\toriginal\tcorrected"];
+      for (const [pid, cols] of Object.entries(edits.set)) for (const [col, val] of Object.entries(cols)) {
+        const key = (EDIT_FIELDS.find(x => x[0] === col) || [])[1], p = people.get(pid);
+        lines.push(["set", pid, col, clean((key && p[key]) || ""), clean(val)].join("\t"));
+      }
+      for (const a of edits.add) for (const [col, val] of Object.entries(a.cols)) lines.push(["new", a.id, col, "", clean(val)].join("\t"));
+      const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+      const url = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], { type: "text/tab-separated-values" }));
+      const link = Object.assign(document.createElement("a"), { href: url, download: `edits_${stamp}.tsv` });
+      document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+    };
+    langListeners.push(() => { updateEditButtons(); if (editsBox.open) renderEdits(); });
+    updateEditButtons();
 
     // ---------- photo window ----------
     const pb = document.getElementById("photoBox");
