@@ -115,6 +115,13 @@
   #photoBox .pbNav[hidden] { display: none; }
   #photoBox button:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 70%, transparent); }
   #panel .sub .pid { cursor: help; font-variant-numeric: tabular-nums; }
+  #panel .phead { display: flex; align-items: center; gap: 12px; margin-right: 36px; }
+  #panel .phead .pname { min-width: 0; }
+  #panel .phead h2 { margin-right: 0; }
+  #panel .pthumb { flex: none; width: 56px; height: 56px; padding: 0; border: 2px solid var(--card-stroke); border-radius: 50%;
+    overflow: hidden; cursor: zoom-in; background: var(--fill); }
+  #panel .pthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #panel .pthumb:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 2px; }
   .far .person .avatar { display: none; }
   .avatar .bg { fill: var(--fill); }
   .avatar use { fill: var(--ink); }
@@ -1473,7 +1480,8 @@ function startViewer(data) {
         children.push(...f.children);
       }
       document.getElementById("panelBody").innerHTML = `
-        <h2>${esc([p.title, fullName(p)].filter(Boolean).join(" "))}</h2><div class="sub">${esc(lifeSpan(p)) || "&nbsp;"}${(g => g ? ` · <span class="gen" title="${esc(t("generationRange").replace("{from}", g.from).replace("{to}", g.to))}">${esc(g[lang])}</span>` : "")(generationOf(p.by))} · <span class="pid" title="${esc(t("personId").replace("{id}", p.id))}">${p.id}</span></div>
+        <div class="phead">${p.photos && p.photos.length ? `<button type="button" class="pthumb" data-photo title="${esc(t("photoOpen"))}" aria-label="${esc(t("photoOpen"))}"><img src="${p.photos[0].src}" alt=""></button>` : ""}<div class="pname">
+        <h2>${esc([p.title, fullName(p)].filter(Boolean).join(" "))}</h2><div class="sub">${esc(lifeSpan(p)) || "&nbsp;"}${(g => g ? ` · <span class="gen" title="${esc(t("generationRange").replace("{from}", g.from).replace("{to}", g.to))}">${esc(g[lang])}</span>` : "")(generationOf(p.by))} · <span class="pid" title="${esc(t("personId").replace("{id}", p.id))}">${p.id}</span></div></div></div>
         ${rows.length ? `<dl>${rows.map(([k, v]) => `<dt>${t(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : ""}
         ${chipList(t("parents"), parents)}
         ${spouses ? `<h3>${t("partners")}</h3>${spouses}` : ""}
@@ -1482,6 +1490,7 @@ function startViewer(data) {
       syncPanel();
     }
     document.getElementById("panelBody").addEventListener("click", ev => {
+      if (ev.target.closest("[data-photo]")) return openPhotos(people.get(selected));   // same window as on the card
       const b = ev.target.closest("[data-id]"); if (b) select(b.dataset.id, true);
     });
     langListeners.push(() => { applyHighlight(); if (selected) showPanel(people.get(selected)); syncPanel(); });
