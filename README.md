@@ -79,6 +79,11 @@ a password and published with GitHub Pages.
 every change and a list of values that still need a decision. Corrections that are specific to this
 family live in private files next to it (`manual_fixes.tsv`, `place_countries.tsv`, `new_people.tsv`).
 
+**Tests:** `pip install -r requirements-dev.txt`, then `python -m pytest`. The tests use a small
+made-up family (no real data) and cover the cleaning rules (dates, fixes, `#DELETE`, `#MERGE`), the
+build (families, photos, documents) and the review of change files (zip, photos, documents, new
+people). With the private data present, one more test checks that the whole tree is one connected graph.
+
 **Editing:** the ✏️ button in the viewer turns the info panel into a form. Changes are only collected in your browser and downloaded as a file; nothing is saved
 online. Put the file into `data/cleaned/inbox/` and run `python src/review_edits.py`: it shows every
 change and only what you accept goes into the private fix files (a downloaded ZIP is unpacked first; accepted photos are saved into
