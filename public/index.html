@@ -5,9 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <script>
+  // Browser storage prefix: "stammbaum", or "stammbaum-demo" in the demo build (own settings and edits).
+  const STORE = document.documentElement.dataset.store || "stammbaum";
   // Theme: saved choice, else the system setting. Applied before first paint to avoid a flash.
   (() => {
-    let saved = null; try { saved = localStorage.getItem("stammbaum-theme"); } catch {}
+    let saved = null; try { saved = localStorage.getItem(STORE + "-theme"); } catch {}
     const sys = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     document.documentElement.dataset.theme = saved === "dark" || saved === "light" ? saved : sys;
   })();
@@ -66,6 +68,11 @@
     --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .45);
 }
 * { box-sizing: border-box; }
+#demoBadge { position: fixed; right: 12px; bottom: 12px; z-index: 5; padding: 6px 12px; border-radius: 999px;
+  font: 600 12px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #fff; background: var(--danger);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .25); pointer-events: auto; cursor: help; }
+#demoBadge[hidden] { display: none; }
+#demoBadge span { font-weight: 500; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   color: var(--ink); -webkit-font-smoothing: antialiased; }
@@ -426,6 +433,7 @@ details.more .toggles { margin-top: 6px; }
 </style>
 </head>
 <body>
+<div id="demoBadge" hidden data-i18n-attr="title:demoBadgeHelp"><b>DEMO</b> <span data-i18n="demoBadge"></span></div>
 <svg id="map"><defs>
   <clipPath id="avatarClip"><circle cx="34" cy="32" r="20"/></clipPath>
   <symbol id="pic-U" viewBox="0 0 40 40"><circle cx="20" cy="15" r="7.5"/><path d="M5 40c0-10 6.5-15.5 15-15.5S35 30 35 40z"/></symbol>
@@ -514,6 +522,8 @@ const generationOf = year => year ? GENERATIONS.find(g => year >= g.from && year
 
 const TEXT = {
   de: {
+    demoBadge: "erfundene Beispielfamilie",
+    demoBadgeHelp: "Demo: alle Personen, Daten und Bilder sind erfunden. Änderungen im Bearbeiten-Modus bleiben nur in diesem Browser.",
     title: "Stammbaum Explorer", loading: "Layout wird berechnet…", layoutError: "Layout-Fehler: ",
     noData: "Keine Daten gefunden – bitte python src/build_web.py ausführen.",
     lockTitle: "Stammbaum", lockText: "Dieser Stammbaum ist passwortgeschützt.", password: "Passwort",
@@ -596,6 +606,8 @@ const TEXT = {
     familyTreeHelp: "Alle Blutsverwandten der ausgewählten Person (Vorfahren und deren Nachkommen, beide Seiten) plus deren Partner – also auch alle Angeheirateten. Deren eigene Eltern und Vorfahren gehören nicht dazu.",
   },
   en: {
+    demoBadge: "made-up sample family",
+    demoBadgeHelp: "Demo: all people, dates and pictures are invented. Changes in edit mode stay in this browser only.",
     title: "Family Tree Explorer", loading: "Calculating layout…", layoutError: "Layout error: ",
     noData: "No data found – please run python src/build_web.py.",
     lockTitle: "Family tree", lockText: "This family tree is password-protected.", password: "Password",
@@ -680,7 +692,7 @@ const TEXT = {
 };
 </script>
 <script>
-const LANG_KEY = "stammbaum-lang";
+const LANG_KEY = STORE + "-lang";
 let lang = (() => {
   const q = new URLSearchParams(location.search).get("lang");
   if (q in TEXT) return q;
@@ -769,13 +781,13 @@ function applyThemeButton() {
 }
 function setTheme(th, save = true) {
   document.documentElement.dataset.theme = th;
-  if (save) try { localStorage.setItem("stammbaum-theme", th); } catch {}
+  if (save) try { localStorage.setItem(STORE + "-theme", th); } catch {}
   applyThemeButton();
   themeListeners.forEach(fn => fn());
 }
 document.getElementById("btnTheme").onclick = () => setTheme(theme() === "dark" ? "light" : "dark");
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e => {   // follow the system until the user chooses
-  let saved = null; try { saved = localStorage.getItem("stammbaum-theme"); } catch {}
+  let saved = null; try { saved = localStorage.getItem(STORE + "-theme"); } catch {}
   if (!saved) setTheme(e.matches ? "dark" : "light", false);
 });
 applyLang();
@@ -1095,7 +1107,7 @@ function startViewer(data) {
 
     // photo toggle (remembered per browser); text moves right and is clipped shorter next to the avatar
     let showPhotos = true;
-    try { showPhotos = localStorage.getItem("stammbaum-photos") !== "0"; } catch {}
+    try { showPhotos = localStorage.getItem(STORE + "-photos") !== "0"; } catch {}
     function applyPhotos() {
       viewport.classed("photos", showPhotos);
       const x = showPhotos ? 62 : 14;
@@ -1122,7 +1134,7 @@ function startViewer(data) {
     applyPhotos();
     document.getElementById("btnPhotos").onclick = () => {
       showPhotos = !showPhotos;
-      try { localStorage.setItem("stammbaum-photos", showPhotos ? "1" : "0"); } catch {}
+      try { localStorage.setItem(STORE + "-photos", showPhotos ? "1" : "0"); } catch {}
       applyPhotos();
     };
     langListeners.push(applyPhotos);
@@ -1692,7 +1704,7 @@ function startViewer(data) {
       ["OCCU", "occupation", "occupation"], ["RELI", "religion", "religion"], ["ADDR.LAST", "addrLast", "addrLast"],
       ["PHON", "phone", "phone"], ["NOTE", "note", "note", "text"],
     ];
-    const EDITS_KEY = "stammbaum-edits";
+    const EDITS_KEY = STORE + "-edits";
     let editOn = false, adding = null;
     let edits = { set: {}, add: [], photos: [], docs: [], del: [], seq: 0 };
     try { edits = JSON.parse(localStorage.getItem(EDITS_KEY)) || edits; } catch {}
@@ -2103,7 +2115,7 @@ async function decrypt(enc, password) {
 function showLock(enc) {
   const lock = document.getElementById("lock"), form = document.getElementById("lockForm");
   const input = document.getElementById("lockPw"), msg = document.getElementById("lockMsg");
-  const SKEY = "stammbaum-pw";
+  const SKEY = STORE + "-pw";
   async function tryOpen(pw, fromSession) {
     msg.textContent = t("decrypting");
     try {
@@ -2131,6 +2143,7 @@ function showLock(enc) {
 if (window.FAMILY_DATA) startViewer(window.FAMILY_DATA);
 else if (window.FAMILY_DATA_ENC) showLock(window.FAMILY_DATA_ENC);
 else document.getElementById("loading").textContent = t("noData");
+if (document.documentElement.hasAttribute("data-demo")) document.getElementById("demoBadge").hidden = false;
 </script>
 </body>
 </html>
