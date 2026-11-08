@@ -163,6 +163,7 @@
   .avatar use { fill: var(--ink); }
   .person .given { font-size: 14px; font-weight: 600; fill: var(--ink); letter-spacing: -.01em; }
   .person .surname { font-size: 12.5px; fill: var(--ink); }
+  .person .surname .nee { font-size: 11.5px; fill: var(--muted); }
   .person .life { font-size: 11.5px; fill: var(--muted); font-variant-numeric: tabular-nums; }
 
   /* lineage highlight */
@@ -288,6 +289,7 @@
   #panel.open { transform: none; }
   #panel:focus { outline: none; }
   #panel h2 { margin: 0 40px 2px 0; font-size: 22px; line-height: 1.2; font-weight: 700; letter-spacing: -.02em; }
+  #panel h2 .nee { font-size: 15px; font-weight: 500; color: var(--muted); letter-spacing: 0; white-space: nowrap; }
   #panel .sub { color: var(--muted); font-size: 14px; margin-bottom: 14px; font-variant-numeric: tabular-nums; }
   #panel .sub .gen { cursor: help; }
   #panel .close { position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border: 0; border-radius: 50%;
@@ -524,7 +526,8 @@ const TEXT = {
     editAddPhoto: "Foto auswählen …", editPhotoDate: "Datum des Fotos", editNewPhoto: "neues Foto",
     editPhotoBad: "Das Bild konnte nicht gelesen werden (JPG, PNG oder WebP).", editStorageFull: "Der Browser-Speicher ist voll – bitte erst die gesammelten Änderungen herunterladen.",
     editAdd: "Hinzufügen", editCancel: "Abbrechen", editParentFull: "Hat schon Vater und Mutter.",
-    fGiven: "Vorname(n)", fSurname: "Nachname", fSex: "Geschlecht", fBirthDate: "Geburtsdatum", fBirthPlace: "Geburtsort",
+    nee: "geb. {name}", neeM: "geb. {name}",
+    fGiven: "Vorname(n)", fSurname: "Geburtsname", fMarried: "Ehename", fSex: "Geschlecht", fBirthDate: "Geburtsdatum", fBirthPlace: "Geburtsort",
     fDeathDate: "Sterbedatum", fDeathPlace: "Sterbeort", sexM: "männlich", sexF: "weiblich", sexU: "unbekannt",
     photoPrev: "Vorheriges Foto", photoNext: "Nächstes Foto", photoUndated: "ohne Datum", photoOpen: "Foto vergrößern",
     personId: "Personen-ID – für Fotos: {id}_JJJJ-MM-TT.jpg in data/img/ ablegen",
@@ -598,7 +601,8 @@ const TEXT = {
     editAddPhoto: "Choose photo …", editPhotoDate: "Date of the photo", editNewPhoto: "new photo",
     editPhotoBad: "The image could not be read (JPG, PNG or WebP).", editStorageFull: "The browser storage is full – please download the collected changes first.",
     editAdd: "Add", editCancel: "Cancel", editParentFull: "Already has a father and a mother.",
-    fGiven: "Given name(s)", fSurname: "Surname", fSex: "Sex", fBirthDate: "Date of birth", fBirthPlace: "Place of birth",
+    nee: "née {name}", neeM: "né {name}",
+    fGiven: "Given name(s)", fSurname: "Surname at birth", fMarried: "Married name", fSex: "Sex", fBirthDate: "Date of birth", fBirthPlace: "Place of birth",
     fDeathDate: "Date of death", fDeathPlace: "Place of death", sexM: "male", sexF: "female", sexU: "unknown",
     photoPrev: "Previous photo", photoNext: "Next photo", photoUndated: "undated", photoOpen: "Enlarge photo",
     personId: "Person ID – for photos, put {id}_YYYY-MM-DD.jpg into data/img/",
@@ -753,7 +757,10 @@ function startViewer(data) {
     for (const s of [f.husband, f.wife]) if (s) people.get(s).spouseFams.push(f.id);
   }
 
-  const fullName = p => [p.given, p.surname].filter(Boolean).join(" ") || t("unknown");
+  // surname = birth surname; married = taken surname (SURN.MARR), shown first with "geb. <birth name>" after it
+  const shownSurname = p => p.married || p.surname || "";
+  const neeLabel = p => p.married && p.surname ? t(p.sex === "M" ? "neeM" : "nee").replace("{name}", p.surname) : "";
+  const fullName = p => [p.given, shownSurname(p)].filter(Boolean).join(" ") || t("unknown");
   const lifeSpan = p => (p.by || p.dy) ? `${p.by ? "* " + p.by : ""}${p.by && p.dy ? "  " : ""}${p.dy ? "† " + p.dy : ""}` : "";
   const clip = (s, n) => s.length > n ? s.slice(0, n - 1) + "…" : s;
   const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -1060,7 +1067,20 @@ function startViewer(data) {
       viewport.classed("photos", showPhotos);
       const x = showPhotos ? 62 : 14;
       personSel.select(".given").attr("x", x).text(p => clip(p.given || "?", showPhotos ? 15 : 20));
-      personSel.select(".surname").attr("x", x).text(p => clip(p.surname, showPhotos ? 18 : 24));
+      const n = showPhotos ? 18 : 24, room = W - x - 8;
+      // measured on a canvas: SVG text has no width while it is hidden (far zoom)
+      const ctx = (applyPhotos.cv ||= document.createElement("canvas")).getContext("2d"), font = getComputedStyle(document.body).fontFamily;
+      const width = (str, px) => { ctx.font = `${px}px ${font}`; return ctx.measureText(str).width; };
+      personSel.select(".surname").attr("x", x).each(function (p) {      // "Muster geb. Beispiel", née in grey
+        const el = d3.select(this).text(""), s = shownSurname(p), e = neeLabel(p);
+        if (!e) return void el.text(clip(s, n));
+        let ns = s.length, ne = e.length;            // shorten the longer part until both fit on the card
+        while (width(clip(s, ns), 12.5) + width(" " + clip(e, ne), 11.5) > room && ns + ne > 8) {
+          if (ne >= ns && ne > 6) ne--; else ns--;
+        }
+        el.append("tspan").text(clip(s, ns));
+        el.append("tspan").attr("class", "nee").text(" " + clip(e, ne));
+      });
       personSel.select(".life").attr("x", x);
       const b = document.getElementById("btnPhotos");
       b.setAttribute("aria-pressed", showPhotos);
@@ -1593,7 +1613,7 @@ function startViewer(data) {
       }
       document.getElementById("panelBody").innerHTML = `
         <div class="phead">${p.photos && p.photos.length ? `<button type="button" class="pthumb" data-photo title="${esc(t("photoOpen"))}" aria-label="${esc(t("photoOpen"))}"><img src="${p.photos[0].src}" alt=""></button>` : ""}<div class="pname">
-        <h2>${esc([p.title, fullName(p)].filter(Boolean).join(" "))}</h2><div class="sub">${esc(lifeSpan(p)) || "&nbsp;"}${(g => g ? ` · <span class="gen" title="${esc(t("generationRange").replace("{from}", g.from).replace("{to}", g.to))}">${esc(g[lang])}</span>` : "")(generationOf(p.by))} · <span class="pid" title="${esc(t("personId").replace("{id}", p.id))}">${p.id}</span></div></div></div>
+        <h2>${esc([p.title, fullName(p)].filter(Boolean).join(" "))}${neeLabel(p) ? ` <span class="nee">${esc(neeLabel(p))}</span>` : ""}</h2><div class="sub">${esc(lifeSpan(p)) || "&nbsp;"}${(g => g ? ` · <span class="gen" title="${esc(t("generationRange").replace("{from}", g.from).replace("{to}", g.to))}">${esc(g[lang])}</span>` : "")(generationOf(p.by))} · <span class="pid" title="${esc(t("personId").replace("{id}", p.id))}">${p.id}</span></div></div></div>
         ${editOn ? editForm(p) : rows.length ? `<dl>${rows.map(([k, v]) => `<dt>${t(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : ""}
         ${chipList(t("parents"), parents)}
         ${spouses ? `<h3>${t("partners")}</h3>${spouses}` : ""}
@@ -1616,7 +1636,7 @@ function startViewer(data) {
     // Available to everyone: nothing is saved online, a change file only takes effect after the
     // owner has reviewed it with review_edits.py.
     const EDIT_FIELDS = [   // CSV column, person key, label, kind
-      ["GIVN", "given", "fGiven"], ["SURN", "surname", "fSurname"], ["NAME._RUFNAME", "callName", "callName"],
+      ["GIVN", "given", "fGiven"], ["SURN", "surname", "fSurname"], ["SURN.MARR", "married", "fMarried"], ["NAME._RUFNAME", "callName", "callName"],
       ["NICK", "nick", "nick"], ["TITL", "title", "persTitle"], ["SEX", "sex", "fSex", "sex"],
       ["BIRT.DATE", "birthDate", "fBirthDate", "date"], ["BIRT.PLAC", "birthPlace", "fBirthPlace"],
       ["DEAT.DATE", "deathDate", "fDeathDate", "date"], ["DEAT.PLAC", "deathPlace", "fDeathPlace"],
@@ -1652,6 +1672,7 @@ function startViewer(data) {
           <h4>${esc(t({ child: "editNewChild", parent: "editNewParent", partner: "editNewPartner" }[adding]).replace("{name}", fullName(p)))}</h4>
           <label>${t("fGiven")}</label><input name="GIVN">
           <label>${t("fSurname")}</label><input name="SURN" value="${esc(adding === "child" ? (p.sex === "M" ? p.surname : "") : adding === "parent" ? p.surname : "")}">
+          <label>${t("fMarried")}</label><input name="SURN.MARR" value="${esc(adding === "partner" && p.sex === "M" ? shownSurname(p) : "")}">
           <label>${t("fSex")}</label>${input("SEX", "sex", adding === "partner" ? (p.sex === "M" ? "F" : p.sex === "F" ? "M" : "U") : "U", false)}
           <label>${t("fBirthDate")}</label><input name="BIRT.DATE" placeholder="${esc(t("editDateHint"))}">
           <label>${t("fBirthPlace")}</label><input name="BIRT.PLAC">
@@ -1722,6 +1743,7 @@ function startViewer(data) {
       if (what === "saveAdd") {                       // new person with a temporary id NEWn
         if (!v.GIVN && !v.SURN) { err.hidden = false; err.textContent = t("fGiven") + " / " + t("fSurname") + "?"; return; }
         const id = "NEW" + (++edits.seq), cols = { GIVN: v.GIVN, SURN: v.SURN, SEX: v.SEX };
+        if (v["SURN.MARR"]) cols["SURN.MARR"] = v["SURN.MARR"];
         if (v["BIRT.DATE"]) cols["BIRT.DATE"] = v["BIRT.DATE"];
         if (v["BIRT.PLAC"]) cols["BIRT.PLAC"] = v["BIRT.PLAC"];
         let note = "";
@@ -1846,11 +1868,11 @@ function startViewer(data) {
 
     // ---------- search ----------
     const searchEl = document.getElementById("search"), resultsEl = document.getElementById("results");
-    const index = [...people.values()].map(p => ({ p, key: norm([fullName(p), p.callName, p.nick, p.title].filter(Boolean).join(" ")) }));
+    const index = [...people.values()].map(p => ({ p, key: norm([fullName(p), p.surname, p.callName, p.nick, p.title].filter(Boolean).join(" ")) }));   // taken + birth surname
     let active = 0, hits = [];
     function renderResults() {
       resultsEl.innerHTML = hits.map((p, i) =>
-        `<li data-id="${p.id}" class="${i === active ? "active" : ""}">${esc(fullName(p))}${p.nick ? ` <small>„${esc(p.nick)}“</small>` : ""}<small>${esc(lifeSpan(p))}</small></li>`).join("");
+        `<li data-id="${p.id}" class="${i === active ? "active" : ""}">${esc(fullName(p))}${neeLabel(p) ? ` <small>${esc(neeLabel(p))}</small>` : ""}${p.nick ? ` <small>„${esc(p.nick)}“</small>` : ""}<small>${esc(lifeSpan(p))}</small></li>`).join("");
       resultsEl.classList.toggle("open", hits.length > 0);
     }
     searchEl.addEventListener("input", () => {
