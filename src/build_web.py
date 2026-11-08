@@ -84,6 +84,34 @@ def photo_entry(date: str, path: Path) -> dict:
     return entry
 
 
+# Documents (evidence: certificates, notices, letters …): data/docs/<ID>_<Title>.<ext>, any file type.
+# Images are embedded so the viewer can open them; other types are only listed by title.
+# An optional <same name>.txt next to a document holds its description.
+DOCS = ROOT / "data" / "docs"
+
+
+def doc_index(people: dict[str, dict]) -> dict[str, list[dict]]:
+    """person id -> [{title, file, src?, note?}] for every file in data/docs/, sorted by file name."""
+    found: dict[str, list[dict]] = {}
+    files = sorted(f for f in DOCS.glob("*") if f.is_file()) if DOCS.is_dir() else []
+    stems = {f.stem for f in files if f.suffix.lower() != ".txt"}
+    for f in files:
+        if f.suffix.lower() == ".txt" and f.stem in stems:
+            continue                                      # description of another document
+        m = re.match(r"(I\d+)_(.+)$", f.stem)
+        if not m or m[1] not in people:
+            print(f"Warning: document {f.name} matches nobody - name it <ID>_<Title>{f.suffix}")
+            continue
+        entry = {"title": m[2].replace("_", " "), "file": f.name}
+        if f.suffix.lower() in IMG_TYPES:
+            entry["src"] = photo_uri(f)
+        note = f.with_suffix(".txt")
+        if f.suffix.lower() != ".txt" and note.is_file() and note.read_text(encoding="utf-8-sig").strip():
+            entry["note"] = note.read_text(encoding="utf-8-sig").strip()
+        found.setdefault(m[1], []).append(entry)
+    return found
+
+
 PHOTO_DATE_RE = re.compile(r"(?:^|_)(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?$")
 
 
@@ -215,6 +243,8 @@ def build(rows: list[dict[str, str]]) -> dict:
             items.append(("", linked))
         if items:
             p["photos"] = [photo_entry(d, f) for d, f in items]
+    for pid, docs in doc_index(people).items():
+        people[pid]["docs"] = docs
 
     # Families keyed by (father, mother). Built from child->parent links first,
     # then from spouse links so childless couples also appear.
@@ -323,7 +353,8 @@ def main() -> None:
             header + "window.FAMILY_DATA = " + json.dumps(data, ensure_ascii=False) + ";\n",
             encoding="utf-8")
     photos = sum(len(p.get("photos", [])) for p in data["people"])
-    print(f"{len(data['people'])} people, {len(data['families'])} families, {photos} photos -> {out}"
+    docs = sum(len(p.get("docs", [])) for p in data["people"])
+    print(f"{len(data['people'])} people, {len(data['families'])} families, {photos} photos, {docs} documents -> {out}"
           + (" (encrypted)" if args.publish else ""))
 
 

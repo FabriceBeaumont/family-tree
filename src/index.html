@@ -162,6 +162,14 @@
   #panel .phead h2 { margin-right: 0; }
   #panel .pthumb { flex: none; width: 56px; height: 56px; padding: 0; border: 2px solid var(--card-stroke); border-radius: 50%;
     overflow: hidden; cursor: zoom-in; background: var(--fill); }
+  #panel .docs { margin: 18px 0 4px; padding-top: 12px; border-top: 1px solid var(--card-stroke); }
+  #panel .docs .docsBtn { height: 32px; padding: 0 12px; font-size: 13px; background: var(--card); border: 1px solid var(--card-stroke); }
+  #panel .docs ul { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+  #panel .docs li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; background: var(--fill); }
+  #panel .docs li button { all: unset; display: flex; align-items: center; gap: 10px; flex: 1; cursor: zoom-in; }
+  #panel .docs li img { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; flex: none; }
+  #panel .docs .ico { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 6px; background: var(--card); font-size: 11px; font-weight: 600; color: var(--muted); flex: none; }
+  #panel .docs .dt { display: grid; gap: 2px; } #panel .docs .dt small { color: var(--muted); }
   #panel .pthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   #panel .pthumb:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 2px; }
   .far .person .avatar { display: none; }
@@ -522,7 +530,7 @@ const TEXT = {
     gensHelp: "Begrenzt die direkte Linie der ausgewählten Person: ↑ wie viele Generationen Vorfahren, ↓ wie viele Generationen Nachkommen. Leer = alle. Mit Fokus werden nur diese Generationen gezeigt.",
     photos: "Fotos", photosHide: "Fotos ausblenden", photosShow: "Fotos einblenden",
     selectFirst: "Zuerst eine Person auswählen.",
-    editMode: "Bearbeiten", editHelp: "Bearbeiten: Angaben korrigieren, Personen und Fotos hinzufügen oder Personen zum Löschen vormerken. Die Änderungen werden nur in diesem Browser gesammelt – als Datei herunterladen und an Fabrice schicken. Er prüft jede Änderung, bevor sie im Stammbaum erscheint.",
+    editMode: "Bearbeiten", editHelp: "Bearbeiten: Angaben korrigieren, Personen, Fotos und Dokumente hinzufügen oder Personen zum Löschen vormerken. Die Änderungen werden nur in diesem Browser gesammelt – als Datei herunterladen und an Fabrice schicken. Er prüft jede Änderung, bevor sie im Stammbaum erscheint.",
     editsCount: "Änderungen ({n})", editsTitle: "Gesammelte Änderungen", editsNone: "Noch keine Änderungen.",
     editsDownload: "Als Datei herunterladen", editsDiscard: "Alle verwerfen", editsDiscardAsk: "Alle gesammelten Änderungen verwerfen?",
     editsHint: "Die Datei an Fabrice schicken (z. B. per E-Mail). Mit neuen Fotos ist es eine ZIP-Datei mit den Änderungen und allen Fotos – bitte die ZIP-Datei unverändert schicken. Er prüft jede Änderung einzeln, bevor sie veröffentlicht wird. (Für Fabrice: nach data/cleaned/inbox/ legen und python src/review_edits.py ausführen.)",
@@ -540,6 +548,9 @@ const TEXT = {
     fGiven: "Vorname(n)", fSurname: "Geburtsname", fMarried: "Ehename", fSex: "Geschlecht", fBirthDate: "Geburtsdatum", fBirthPlace: "Geburtsort",
     fDeathDate: "Sterbedatum", fDeathPlace: "Sterbeort", sexM: "männlich", sexF: "weiblich", sexU: "unbekannt",
     photoPrev: "Vorheriges Foto", photoNext: "Nächstes Foto", photoUndated: "ohne Datum", photoOpen: "Foto vergrößern",
+    docs: "Dokumente", docsOnlyFile: "nur als Datei vorhanden", docOpen: "Dokument öffnen",
+    editDocTitle: "Titel des Dokuments", editDocTitleHint: "z. B. Geburtsurkunde", editAddDoc: "Dokument auswählen …",
+    editDocNoTitle: "Bitte zuerst einen Titel eingeben.", editDocTooBig: "Die Datei ist zu groß (höchstens 3 MB).", editNewDoc: "neues Dokument",
     personId: "Personen-ID – für Fotos: {id}_JJJJ-MM-TT.jpg in data/img/ ablegen",
     helpTitle: "Hilfe: so funktioniert der Stammbaum", helpClose: "Schließen",
     helpControls: "Knöpfe oben", helpColors: "Farben", helpMap: "Karte & Infos",
@@ -554,7 +565,7 @@ const TEXT = {
     helpPhotos: "<b>Fotos</b> – Fotos bzw. Platzhalter-Figuren ein- oder ausblenden. Klick auf ein Foto vergrößert es; mit ‹ › bzw. Wischen durch weitere Fotos blättern.",
     helpTheme: "<b>Design</b> – zwischen hellem und dunklem Design wechseln.",
     helpLang: "<b>Sprache</b> – Deutsch / Englisch.",
-    helpEdit: "<b>Bearbeiten</b> – Angaben korrigieren, Personen oder Fotos hinzufügen, überflüssige Einträge mit „Person löschen“ vormerken; unter „Änderungen“ als Datei herunterladen und an Fabrice schicken. Nichts wird sofort veröffentlicht.",
+    helpEdit: "<b>Bearbeiten</b> – Angaben korrigieren, Personen, Fotos oder Dokumente hinzufügen, überflüssige Einträge mit „Person löschen“ vormerken; unter „Änderungen“ als Datei herunterladen und an Fabrice schicken. Nichts wird sofort veröffentlicht.",
     helpDirect: "<b>Direkte Linie</b> – Eltern, Großeltern … und Kinder, Enkel … der ausgewählten Person.",
     helpPartners: "<b>Partner</b> – Rahmen und Ehelinie in Blau (Mann) bzw. Rot (Frau).",
     helpDivorced: "<b>Getrennt / geschieden</b> – gepunktete graue Linie zwischen den Partnern.",
@@ -601,7 +612,7 @@ const TEXT = {
     gensHelp: "Limits the selected person's direct line: ↑ how many generations of ancestors, ↓ how many generations of descendants. Empty = all. With Focus, only these generations are shown.",
     photos: "Photos", photosHide: "Hide photos", photosShow: "Show photos",
     selectFirst: "Select a person first.",
-    editMode: "Edit", editHelp: "Edit: correct details, add people and photos, or mark people for deletion. Changes are only collected in this browser – download them as a file and send it to Fabrice. He checks every change before it appears in the family tree.",
+    editMode: "Edit", editHelp: "Edit: correct details, add people, photos and documents, or mark people for deletion. Changes are only collected in this browser – download them as a file and send it to Fabrice. He checks every change before it appears in the family tree.",
     editsCount: "Changes ({n})", editsTitle: "Collected changes", editsNone: "No changes yet.",
     editsDownload: "Download as file", editsDiscard: "Discard all", editsDiscardAsk: "Discard all collected changes?",
     editsHint: "Send the file to Fabrice (e.g. by e-mail). With new photos it is a ZIP file holding the changes and all photos – please send the ZIP file as it is. He checks every change before it is published. (For Fabrice: put it into data/cleaned/inbox/ and run python src/review_edits.py.)",
@@ -619,6 +630,9 @@ const TEXT = {
     fGiven: "Given name(s)", fSurname: "Surname at birth", fMarried: "Married name", fSex: "Sex", fBirthDate: "Date of birth", fBirthPlace: "Place of birth",
     fDeathDate: "Date of death", fDeathPlace: "Place of death", sexM: "male", sexF: "female", sexU: "unknown",
     photoPrev: "Previous photo", photoNext: "Next photo", photoUndated: "undated", photoOpen: "Enlarge photo",
+    docs: "Documents", docsOnlyFile: "available as a file only", docOpen: "Open document",
+    editDocTitle: "Title of the document", editDocTitleHint: "e.g. Birth certificate", editAddDoc: "Choose document …",
+    editDocNoTitle: "Please enter a title first.", editDocTooBig: "The file is too large (3 MB at most).", editNewDoc: "new document",
     personId: "Person ID – for photos, put {id}_YYYY-MM-DD.jpg into data/img/",
     helpTitle: "Help: how the family tree works", helpClose: "Close",
     helpControls: "Buttons at the top", helpColors: "Colours", helpMap: "Map & details",
@@ -633,7 +647,7 @@ const TEXT = {
     helpPhotos: "<b>Photos</b> – show or hide photos and placeholder figures. Click a photo to enlarge it; use ‹ › or swipe to see further photos.",
     helpTheme: "<b>Appearance</b> – switch between light and dark.",
     helpLang: "<b>Language</b> – German / English.",
-    helpEdit: "<b>Edit</b> – correct details, add people or photos, mark stray entries with “Delete person”; download them under “Changes” and send the file to Fabrice. Nothing is published right away.",
+    helpEdit: "<b>Edit</b> – correct details, add people, photos or documents, mark stray entries with “Delete person”; download them under “Changes” and send the file to Fabrice. Nothing is published right away.",
     helpDirect: "<b>Direct line</b> – parents, grandparents … and children, grandchildren … of the selected person.",
     helpPartners: "<b>Partners</b> – frame and marriage line in blue (male) or red (female).",
     helpDivorced: "<b>Separated / divorced</b> – dotted grey line between the partners.",
@@ -845,7 +859,7 @@ function startViewer(data) {
     }
     return { graph, blocksUsed, famsUsed };
   }
-  // Siblings left to right = youngest to oldest. ELK orders them freely (and differently for every
+  // Siblings left to right = oldest to youngest. ELK orders them freely (and differently for every
   // Fokus subset), so after each layout the child blocks of one family that share a row are re-placed:
   // equal widths simply swap slots; otherwise they are packed into the same span if no other card is there.
   function orderSiblings(P, blocksUsed, famsUsed, keep) {
@@ -857,7 +871,7 @@ function startViewer(data) {
       const year = new Map();                        // child block -> birth year of the child in it
       for (const c of f.children) {
         const b = blockOf.get(c);
-        if (vis(c) && blocksUsed.has(b) && b !== parentBlock && !year.has(b)) year.set(b, people.get(c).by ?? -Infinity);
+        if (vis(c) && blocksUsed.has(b) && b !== parentBlock && !year.has(b)) year.set(b, people.get(c).by ?? Infinity);
       }
       if (year.size < 2) continue;
       const rows = new Map();
@@ -865,7 +879,7 @@ function startViewer(data) {
       for (const row of rows.values()) {
         if (row.length < 2) continue;
         const cur = row.slice().sort((a, b) => a.x0 - b.x0);
-        const want = row.slice().sort((a, b) => (b.yr - a.yr) || (a.x0 - b.x0));   // youngest first, unknown last
+        const want = row.slice().sort((a, b) => (a.yr - b.yr) || (a.x0 - b.x0));   // oldest first, unknown last
         if (want.every((b, i) => b === cur[i])) continue;
         let placed;
         if (want.every(b => b.w === want[0].w)) placed = want.map((b, i) => [b, cur[i].x0]);
@@ -1601,6 +1615,7 @@ function startViewer(data) {
     const chipList = (title, ids) => ids.length ? `<h3>${title}</h3><div class="chips">${ids.map(chip).join("")}</div>` : "";
 
     const nameYear = id => { const q = people.get(id); return fullName(q) + (q.by ? ", * " + q.by : ""); };
+    let docsOpen = false;                             // documents list at the bottom of the panel
     function showPanel(p) {
       const rows = [
         ["persTitle", p.title], ["callName", p.callName], ["nick", p.nick],
@@ -1632,11 +1647,22 @@ function startViewer(data) {
         ${chipList(t("parents"), parents)}
         ${spouses ? `<h3>${t("partners")}</h3>${spouses}` : ""}
         ${chipList(t("children"), children)}
-        ${chipList(`${t("siblings")} (${siblings.length})`, siblings)}`;
+        ${chipList(`${t("siblings")} (${siblings.length})`, siblings)}
+        ${p.docs && p.docs.length ? `<div class="docs"><button type="button" class="btn docsBtn" data-docs aria-expanded="${docsOpen}">📄 ${t("docs")} (${p.docs.length})</button>
+          ${docsOpen ? `<ul>${p.docs.map((d, i) => {
+            const ext = d.file.split(".").pop().toUpperCase(), text = `<span class="dt"><span>${esc(d.title)}</span>${d.note ? `<small>${esc(d.note)}</small>` : d.src ? "" : `<small>${ext} · ${t("docsOnlyFile")}</small>`}</span>`;
+            return d.src ? `<li><button type="button" data-doc="${i}" title="${esc(t("docOpen"))}"><img src="${d.src}" alt="">${text}</button></li>`
+                         : `<li><span class="ico">${esc(ext)}</span>${text}</li>`; }).join("")}</ul>` : ""}</div>` : ""}`;
       syncPanel();
     }
     document.getElementById("panelBody").addEventListener("click", ev => {
       if (ev.target.closest("[data-photo]")) return openPhotos(people.get(selected));   // same window as on the card
+      if (ev.target.closest("[data-docs]")) { docsOpen = !docsOpen; return showPanel(people.get(selected)); }
+      const dc = ev.target.closest("[data-doc]");
+      if (dc) {                                       // image documents only, in the photo window
+        const docs = people.get(selected).docs, viewable = docs.filter(d => d.src);
+        return openPhotos(people.get(selected), viewable, viewable.indexOf(docs[+dc.dataset.doc]));
+      }
       const ea = ev.target.closest("[data-edit]");
       if (ea) return editAction(ea.dataset.edit);
       const b = ev.target.closest("[data-id]"); if (b) select(b.dataset.id, true);
@@ -1659,16 +1685,17 @@ function startViewer(data) {
     ];
     const EDITS_KEY = "stammbaum-edits";
     let editOn = false, adding = null;
-    let edits = { set: {}, add: [], photos: [], del: [], seq: 0 };
+    let edits = { set: {}, add: [], photos: [], docs: [], del: [], seq: 0 };
     try { edits = JSON.parse(localStorage.getItem(EDITS_KEY)) || edits; } catch {}
     edits.photos = edits.photos || [];
+    edits.docs = edits.docs || [];
     edits.del = (edits.del || []).filter(id => people.has(id));   // ids marked for deletion (gone after a rebuild)
     const saveEdits = () => {                        // photos make this bigger: report a full browser storage
       try { localStorage.setItem(EDITS_KEY, JSON.stringify(edits)); return true; }
       catch { alert(t("editStorageFull")); return false; }
       finally { updateEditButtons(); }
     };
-    const editCount = () => Object.values(edits.set).reduce((a, o) => a + Object.keys(o).length, 0) + edits.add.length + edits.photos.length + edits.del.length;
+    const editCount = () => Object.values(edits.set).reduce((a, o) => a + Object.keys(o).length, 0) + edits.add.length + edits.photos.length + edits.docs.length + edits.del.length;
     const fieldValue = (p, col, key) => (edits.set[p.id] && col in edits.set[p.id]) ? edits.set[p.id][col] : (p[key] || "");
     const isDate = v => !v || /^\d{4}(-\d{2}(-\d{2})?)?$/.test(v);
     function input(col, kind, value, changed) {
@@ -1707,14 +1734,21 @@ function startViewer(data) {
           <div class="err" hidden></div>
           <div class="row"><input type="file" name="PFILE" accept="image/jpeg,image/png,image/webp" hidden><button type="button" class="btn primary" data-edit="photoPick">${t("editAddPhoto")}</button></div>
         </form>
+        <form class="editForm" data-docform>
+          <h4>${t("docs")} (${(p.docs || []).length})</h4>
+          ${edits.docs.filter(d => d.id === p.id).map(d => `<div class="row pending">${d.src.startsWith("data:image/") ? `<img src="${d.src}" alt="">` : ""}<span>${esc(d.title)} · ${t("editNew")} · ${esc(d.file)}</span><button type="button" class="btn" data-edit="docDel:${d.key}">×</button></div>`).join("")}
+          <label>${t("editDocTitle")}</label><input name="DTITLE" placeholder="${esc(t("editDocTitleHint"))}">
+          <div class="err" hidden></div>
+          <div class="row"><input type="file" name="DFILE" hidden><button type="button" class="btn primary" data-edit="docPick">${t("editAddDoc")}</button></div>
+        </form>
         <div class="editDanger">${edits.del.includes(p.id)
           ? `<p>${t("editDeleteMarked")}</p><button type="button" class="btn" data-edit="undelete">${t("editUndelete")}</button>`
           : `<button type="button" class="btn danger" data-edit="delete">${t("editDelete")}</button>`}</div>`;
     }
     const formValues = form => Object.fromEntries([...form.elements].filter(el => el.name).map(el => [el.name, el.value.trim()]));
     // shrink a picked image to at most 1600 px (JPEG) so it fits into the browser storage and the file
-    async function shrinkImage(file) {
-      const img = await createImageBitmap(file), scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+    async function shrinkImage(file, max = 1600) {
+      const img = await createImageBitmap(file), scale = Math.min(1, max / Math.max(img.width, img.height));
       const c = Object.assign(document.createElement("canvas"), { width: Math.round(img.width * scale), height: Math.round(img.height * scale) });
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
       return c.toDataURL("image/jpeg", 0.85);
@@ -1746,6 +1780,31 @@ function startViewer(data) {
           showPanel(p);
         };
         return picker.click();
+      }
+      if (what === "docPick") {                      // any file type; saved as <ID>_<Title>.<ext>
+        const form = body.querySelector("[data-docform]"), title = form.elements.DTITLE.value.trim().replace(/\s+/g, " "), err = form.querySelector(".err");
+        if (!title) { err.hidden = false; err.textContent = t("editDocNoTitle"); return; }
+        const picker = form.elements.DFILE;
+        picker.onchange = async () => {
+          const file = picker.files[0]; if (!file) return;
+          try {
+            const isImg = /^image\/(jpeg|png|webp)$/.test(file.type);
+            if (!isImg && file.size > 3e6) { err.hidden = false; err.textContent = t("editDocTooBig"); return; }
+            const src = isImg ? await shrinkImage(file, 2400)      // scans stay readable
+              : await new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = bad; r.readAsDataURL(file); });
+            const ext = isImg ? "jpg" : (file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "bin");
+            const stem = p.id + "_" + title.replace(/[\\/:*?"<>|]/g, "").replace(/ /g, "_"), taken = new Set(edits.docs.map(d => d.file));
+            let name = `${stem}.${ext}`;
+            for (let n = 2; taken.has(name); n++) name = `${stem}_${n}.${ext}`;
+            edits.docs.push({ key: "D" + (++edits.seq), id: p.id, title, src, file: name, name: file.name });
+            if (!saveEdits()) edits.docs.pop();
+          } catch { err.hidden = false; err.textContent = t("editPhotoBad"); return; }
+          showPanel(p);
+        };
+        return picker.click();
+      }
+      if (what.startsWith("docDel:")) {
+        edits.docs = edits.docs.filter(d => d.key !== what.slice(7)); saveEdits(); return showPanel(p);
       }
       if (what.startsWith("photoDel:")) {
         edits.photos = edits.photos.filter(ph => ph.key !== what.slice(9)); saveEdits(); return showPanel(p);
@@ -1828,6 +1887,7 @@ function startViewer(data) {
         items.push(`<li><span class="what"><b>${esc(fullName(p))}</b> · ${esc(colLabel(col))}: <del>${esc((key && p[key]) || "–")}</del> → <ins>${esc(val || "–")}</ins></span><button class="x" data-del="set|${pid}|${col}" aria-label="×">×</button></li>`);
       }
       for (const ph of edits.photos) items.push(`<li><img class="thumb" src="${ph.src}" alt=""><span class="what"><b>${esc(fullName(people.get(ph.id)))}</b> · ${t("editNewPhoto")} (${esc(ph.date ? fmtDate(ph.date) : t("photoUndated"))}) · ${esc(photoFile(ph))}${ph.note ? ` – ${esc(ph.note)}` : ""}</span><button class="x" data-del="photo|${ph.key}" aria-label="×">×</button></li>`);
+      for (const d of edits.docs) items.push(`<li>${d.src.startsWith("data:image/") ? `<img class="thumb" src="${d.src}" alt="">` : ""}<span class="what"><b>${esc(fullName(people.get(d.id)))}</b> · ${t("editNewDoc")}: ${esc(d.title)} · ${esc(d.file)}</span><button class="x" data-del="doc|${d.key}" aria-label="×">×</button></li>`);
       for (const id of edits.del) items.push(`<li class="del"><span class="what"><b>${esc(fullName(people.get(id)))}</b> · ${t("editDeleteItem")}</span><button class="x" data-del="del|${id}" aria-label="×">×</button></li>`);
       for (const a of edits.add) items.push(`<li><span class="what"><b>${t("editNew")}: ${esc([a.cols.GIVN, a.cols.SURN].filter(Boolean).join(" "))}</b> · ${esc(a.note)}</span><button class="x" data-del="add|${a.id}" aria-label="×">×</button></li>`);
       document.getElementById("editsBody").innerHTML = (items.length ? `<ul>${items.join("")}</ul>` : `<p>${t("editsNone")}</p>`) + `<p class="sub">${t("editsHint")}</p>`;
@@ -1841,6 +1901,7 @@ function startViewer(data) {
       const b = ev.target.closest("[data-del]"); if (!b) return;
       const [kind, id, col] = b.dataset.del.split("|");
       if (kind === "photo") edits.photos = edits.photos.filter(ph => ph.key !== id);
+      else if (kind === "doc") edits.docs = edits.docs.filter(d => d.key !== id);
       else if (kind === "del") edits.del = edits.del.filter(x => x !== id);
       else if (kind === "set") { delete edits.set[id][col]; if (!Object.keys(edits.set[id]).length) delete edits.set[id]; }
       else {                                          // a removed new person also loses its links
@@ -1851,7 +1912,7 @@ function startViewer(data) {
     });
     document.getElementById("editsDiscard").onclick = () => {
       if (!confirm(t("editsDiscardAsk"))) return;
-      edits = { set: {}, add: [], photos: [], del: [], seq: 0 }; saveEdits(); renderEdits(); if (selected) showPanel(people.get(selected));
+      edits = { set: {}, add: [], photos: [], docs: [], del: [], seq: 0 }; saveEdits(); renderEdits(); if (selected) showPanel(people.get(selected));
     };
     document.getElementById("editsDownload").onclick = () => {
       const clean = v => String(v).replace(/\t/g, " ").replace(/\r?\n|\r/g, "\\n");
@@ -1861,14 +1922,16 @@ function startViewer(data) {
         lines.push(["set", pid, col, clean((key && p[key]) || ""), clean(val)].join("\t"));
       }
       for (const ph of edits.photos) { ph.file = photoFile(ph); lines.push(["photo", ph.id, ph.date || "", ph.file, clean(ph.note || "")].join("\t")); }
+      for (const d of edits.docs) lines.push(["doc", d.id, "", d.file, clean(d.title)].join("\t"));
       for (const id of edits.del) lines.push(["delete", id, "", clean(fullName(people.get(id))), ""].join("\t"));
       for (const a of edits.add) for (const [col, val] of Object.entries(a.cols)) lines.push(["new", a.id, col, "", clean(val)].join("\t"));
       const d = new Date(), two = n => String(n).padStart(2, "0");    // local time, sorts by date
       const stamp = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}_${two(d.getHours())}-${two(d.getMinutes())}`;
       const tsv = new TextEncoder().encode(lines.join("\n") + "\n");
-      if (!edits.photos.length) return saveBlob(new Blob([tsv], { type: "text/tab-separated-values" }), `${stamp}_edits.tsv`);
+      if (!edits.photos.length && !edits.docs.length) return saveBlob(new Blob([tsv], { type: "text/tab-separated-values" }), `${stamp}_edits.tsv`);
       const bytes = src => Uint8Array.from(atob(src.split(",")[1]), ch => ch.charCodeAt(0));   // data: URL -> JPEG bytes
-      saveBlob(makeZip([{ name: `${stamp}_edits.tsv`, data: tsv }, ...edits.photos.map(ph => ({ name: ph.file, data: bytes(ph.src) }))]), `${stamp}_edits.zip`);
+      saveBlob(makeZip([{ name: `${stamp}_edits.tsv`, data: tsv }, ...edits.photos.map(ph => ({ name: ph.file, data: bytes(ph.src) })),
+        ...edits.docs.map(d => ({ name: d.file, data: bytes(d.src) }))]), `${stamp}_edits.zip`);
     };
     function saveBlob(blob, name) {
       const url = URL.createObjectURL(blob), link = Object.assign(document.createElement("a"), { href: url, download: name });
@@ -1900,20 +1963,20 @@ function startViewer(data) {
 
     // ---------- photo window ----------
     const pb = document.getElementById("photoBox");
-    let pbPerson = null, pbIndex = 0;
+    let pbPerson = null, pbList = [], pbIndex = 0;
     function showPhoto(i) {
-      const list = pbPerson.photos, n = list.length;
+      const list = pbList, n = list.length;
       pbIndex = (i + n) % n;
       const ph = list[pbIndex];
       document.getElementById("pbImg").src = ph.src;
       document.getElementById("pbImg").alt = fullName(pbPerson);
       document.getElementById("photoName").textContent = fullName(pbPerson);
-      document.getElementById("pbNote").textContent = ph.note || "";
-      document.getElementById("pbDate").textContent = ph.date ? fmtDate(ph.date) : t("photoUndated");
+      document.getElementById("pbNote").textContent = [ph.title, ph.note].filter(Boolean).join(" – ");
+      document.getElementById("pbDate").textContent = ph.title ? "" : ph.date ? fmtDate(ph.date) : t("photoUndated");
       document.getElementById("pbCount").textContent = n > 1 ? `${pbIndex + 1}/${n}` : "";
       document.getElementById("pbPrev").hidden = document.getElementById("pbNext").hidden = n < 2;
     }
-    function openPhotos(p) { pbPerson = p; showPhoto(0); if (!pb.open) pb.showModal(); }
+    function openPhotos(p, list = p.photos, start = 0) { pbPerson = p; pbList = list; showPhoto(Math.max(0, start)); if (!pb.open) pb.showModal(); }
     document.getElementById("pbPrev").onclick = () => showPhoto(pbIndex - 1);
     document.getElementById("pbNext").onclick = () => showPhoto(pbIndex + 1);
     document.getElementById("pbClose").onclick = () => pb.close();
@@ -1926,7 +1989,7 @@ function startViewer(data) {
     const pbImg = document.getElementById("pbImg");
     pbImg.addEventListener("pointerdown", ev => { swipeX = ev.clientX; });
     pbImg.addEventListener("pointerup", ev => {
-      if (swipeX !== null && Math.abs(ev.clientX - swipeX) > 40 && pbPerson.photos.length > 1) showPhoto(pbIndex + (ev.clientX < swipeX ? 1 : -1));
+      if (swipeX !== null && Math.abs(ev.clientX - swipeX) > 40 && pbList.length > 1) showPhoto(pbIndex + (ev.clientX < swipeX ? 1 : -1));
       swipeX = null;
     });
     langListeners.push(() => { if (pb.open) showPhoto(pbIndex); });

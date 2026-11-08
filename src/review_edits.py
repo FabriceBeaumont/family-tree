@@ -21,6 +21,8 @@ which makes clean_csv.py drop the person and every link to them.
 Photo rows: column = year (may be empty), original = the photo's file name in the zip
 (<ID>[_<year>][_n].jpg), corrected = description (shown under the photo). Older change files carry
 the photo itself instead: original = uploaded file name, corrected = data: URL (JPEG).
+Doc rows: original = the file name in the zip (<ID>_<Title>.<ext>, any type), corrected = title;
+accepted documents go to data/docs/ under that name.
 Accepted photos are saved as data/img/<ID>_<year>.jpg (or <ID>.jpg; a _2, _3 … suffix avoids
 overwriting), the description as <same name>.txt next to it.
 New people use temporary ids NEW1, NEW2 … which get the next free I-numbers here.
@@ -46,6 +48,7 @@ FIXES = CLEANED / "manual_fixes.tsv"
 NEW_PEOPLE = CLEANED / "new_people.tsv"
 CLEAN_COPY = CLEANED / "family_tree_cleaned.csv"
 IMG = ROOT / "data" / "img"
+DOCS = ROOT / "data" / "docs"
 
 
 def save_photo(pid: str, date: str, raw: bytes, note: str = "") -> Path:
@@ -71,6 +74,17 @@ def save_photo(pid: str, date: str, raw: bytes, note: str = "") -> Path:
     return target
 
 
+def save_doc(name: str, raw: bytes) -> Path:
+    """Save a document as data/docs/<ID>_<Title>.<ext> (a _2, _3 … suffix avoids overwriting)."""
+    DOCS.mkdir(parents=True, exist_ok=True)
+    stem, ext = Path(name).stem, Path(name).suffix
+    target, n = DOCS / name, 2
+    while target.exists():
+        target, n = DOCS / f"{stem}_{n}{ext}", n + 1
+    target.write_bytes(raw)
+    return target
+
+
 def unpack(archive: Path) -> Path:
     """Unpack a downloaded <stamp>_edits.zip into inbox/<stamp>_edits/ (flat, file names only).
 
@@ -85,7 +99,7 @@ def unpack(archive: Path) -> Path:
     with zipfile.ZipFile(archive) as z:
         for info in z.infolist():
             name = Path(info.filename).name  # never follow paths inside the archive
-            if info.is_dir() or not re.fullmatch(r"[\w.\- ]+\.(tsv|jpe?g|png|webp)", name, re.I):
+            if info.is_dir() or not re.fullmatch(r"[\w.\- ]+\.\w{1,8}", name):  # photos, documents of any type
                 continue
             (folder / name).write_bytes(z.read(info))
     return folder
@@ -351,12 +365,32 @@ def review(path: Path, current: dict[str, dict[str, str]]) -> bool:
         if a == "y":
             saved.append(save_photo(pid, c["column"], raw, note))
             print(f"    saved as {saved[-1].relative_to(ROOT)}")
+    docs = []
+    for c in changes:
+        if c["action"] != "doc":
+            continue
+        pid = real.get(c["id"], c["id"])
+        if re.fullmatch(r"NEW\d+", c["id"]) and pid not in people:
+            continue  # document of a rejected new person
+        found = find_photo(c["original"], [path.parent, INBOX])
+        if not found:
+            print(f"\nDOCUMENT {c['original']} for {pid} {name(pid)}: file not found next to {path.name} - skipped.")
+            continue
+        used.append(found)
+        target = c["original"] if c["id"] == pid else re.sub(r"^NEW\d+", pid, c["original"])
+        print(f"\nDOCUMENT for {pid} {name(pid)} – \"{c['corrected']}\" – {found.stat().st_size // 1000} kB ({found.name})")
+        a = ask("  accept? [y/n/q] ")
+        if a == "q":
+            return False
+        if a == "y":
+            docs.append(save_doc(target, found.read_bytes()))
+            print(f"    saved as {docs[-1].relative_to(ROOT)}")
     if fixes:
         append_fixes(fixes, path.name)
     if people:
         append_people(people)
     print(
-        f"\n{len(fixes)} changes, {len(people)} new people and {len(saved)} photos accepted from {path.name}."
+        f"\n{len(fixes)} changes, {len(people)} new people, {len(saved)} photos and {len(docs)} documents accepted from {path.name}."
     )
     done = INBOX / "done"
     done.mkdir(exist_ok=True)

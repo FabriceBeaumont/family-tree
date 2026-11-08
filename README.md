@@ -37,7 +37,7 @@ Card colors: **blue** = male, **pink** = female.
 ## Found a mistake or know more?
 
 Missing someone, a wrong date, or an old photo? Click **✏️** at the top, correct the details, add people
-and photos or mark a stray entry with the red **Delete person** button, then click **Changes** → **Download as file** and send the file to Fabrice (with new photos it is a ZIP file holding the changes and the photos). Nothing is changed
+photos and documents or mark a stray entry with the red **Delete person** button, then click **Changes** → **Download as file** and send the file to Fabrice (with new photos or documents it is a ZIP file holding the changes and the files). Nothing is changed
 online – he checks every change before it appears. Or simply tell him. If you want to collect details
 about your branch, there is a simple questionnaire to fill in:
 [docs/Fragebogen Familienstammbaum.xlsx](docs/Fragebogen%20Familienstammbaum.xlsx).
@@ -94,6 +94,12 @@ the newest; clicking it opens all of them (‹ › or swipe). JPG, PNG and WebP;
 **Caption:** a text file with the same name next to the photo (`I81_2019.jpg` + `I81_2019.txt`) is shown
 under the enlarged photo. A group photo goes to each person as its own copy (`I61.jpg`, `I454.jpg`).
 The build embeds them in the data, so `--publish` encrypts them like everything else.
+
+**Documents** (certificates, notices, letters – evidence, not photos): put them into `data/docs/` as
+`<ID>_<Title>.<ext>`, e.g. `I237_Abstammungsnachweis_1938_Seite_1.jpg` (underscores become spaces in the
+title); a `.txt` with the same name adds a description. Any file type is allowed: images are embedded and
+open in the viewer, other types (PDF …) are only listed by title. They appear under **📄 Dokumente** at the
+bottom of the person's panel, never among the photos.
 
 ### Update the website after changing the tree
 
