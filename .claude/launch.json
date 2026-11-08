@@ -8,6 +8,12 @@
       "port": 8765
     },
     {
+      "name": "family-tree-public",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8766", "--directory", "public"],
+      "port": 8766
+    },
+    {
       "name": "family-tree-web-2",
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8767", "--directory", "web"],

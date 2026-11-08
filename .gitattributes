@@ -1,0 +1,7 @@
+# never touch line endings of binary files (a PDF breaks when LF becomes CRLF)
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.zip binary

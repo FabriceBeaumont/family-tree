@@ -1,0 +1,13 @@
+id	column	original	corrected
+# DEMO: invented family - owner decisions as in the real workflow
+I1	NICK	*	der Urahn
+I5	NICK	*	Fernweh
+I16	NICK	*	Lehrer Lämpel
+I21	TITL	*	Dr. med. dent.
+I21	NICK	*	Doktor Wurzelbehandlung
+I22	NICK	*	Polaroid-Pola
+I27	NICK	*	Tüftel-Klaus
+I30	NICK	*	Käpt'n Linde
+I33	NICK	*	root
+I34	TITL	*	Dr.
+I41	NICK	*	Max Mustermann

@@ -16,6 +16,17 @@ Move around it like a map, zoom in on any branch, and click a person to see who 
    the tree) — just ask. The password is never written on this page.
 3. Type the password and click **Öffnen** (open). The tree loads after a few seconds.
 
+### 🧪 Try the demo (no password)
+
+**[Open the demo](https://fabricebeaumont.github.io/family-tree/demo/?lang=en)** – the same viewer with the
+made-up *Wurzel* family (45 invented people, drawn pictures, fictional documents). Nothing in it is real,
+and it is completely separate from our family tree.
+
+| | |
+|---|---|
+| ![Person panel](docs/screenshots/en_02_person.png) | ![Kinship labels](docs/screenshots/en_03_relations.png) |
+| ![Blood relatives](docs/screenshots/en_04_blood_relatives.png) | ![Centuries](docs/screenshots/en_05_centuries.png) |
+
 ## How to use it
 
 | To… | Do this |
@@ -66,8 +77,10 @@ a password and published with GitHub Pages.
 | Folder | Committed? | Contents |
 |---|---|---|
 | `src/` | yes | `build_web.py` (CSV → viewer), `index.html` + `style.css` + `i18n.js` (viewer: page and logic, styles, DE/EN texts – the build joins them into one `index.html`), `clean_csv.py` (CSV → cleaned copy) |
-| `public/` | yes (generated) | Password-encrypted viewer, deployed to GitHub Pages |
-| `docs/` | yes | Blank questionnaire for collecting data from relatives |
+| `public/` | yes (generated) | Password-encrypted viewer, deployed to GitHub Pages; `public/demo/` = the demo (plain, made-up data) |
+| `sample/` | yes | The made-up demo family: `make_sample.py` (generates CSV, fixes, pictures, documents), `screenshots.mjs` |
+| `tests/` | yes | pytest suite (made-up data only) |
+| `docs/` | yes | Blank questionnaire for collecting data from relatives; `screenshots/` of the demo |
 | `data/` | **no** (private) | `ahnenblatt/` (`.ahn` + CSV export), `exports/` (HTML + PDF reports), `img/` (photos), `archive/` |
 | `web/` | **no** (generated) | Viewer with unencrypted data, for private sharing as a zip |
 
@@ -121,6 +134,19 @@ Use a long passphrase (4+ random words): the encrypted file is public and could 
 
 `python src/build_web.py` builds `web/` with unencrypted data. Zip the folder and send it;
 the recipient double-clicks `index.html`. Internet is needed on first open (libraries load from a CDN).
+
+### Demo
+
+```
+python sample/make_sample.py        # (re)generate the made-up family in sample/
+python src/build_web.py --sample    # -> public/demo/ (no password), never reads data/
+node sample/screenshots.mjs de      # screenshots of the demo -> docs/screenshots/ (also: en)
+```
+
+The demo keeps its own browser storage (prefix `stammbaum-demo`), so its settings and edit-mode changes
+never mix with the real tree on the same site. The Pages workflow only lets a plain `data.js` through at
+`public/demo/` and only if it is marked as demo data; tests check that no demo name or picture exists in the
+real data.
 
 ### Under the hood
 

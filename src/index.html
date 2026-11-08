@@ -5,9 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <script>
+  // Browser storage prefix: "stammbaum", or "stammbaum-demo" in the demo build (own settings and edits).
+  const STORE = document.documentElement.dataset.store || "stammbaum";
   // Theme: saved choice, else the system setting. Applied before first paint to avoid a flash.
   (() => {
-    let saved = null; try { saved = localStorage.getItem("stammbaum-theme"); } catch {}
+    let saved = null; try { saved = localStorage.getItem(STORE + "-theme"); } catch {}
     const sys = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     document.documentElement.dataset.theme = saved === "dark" || saved === "light" ? saved : sys;
   })();
@@ -16,6 +18,7 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="demoBadge" hidden data-i18n-attr="title:demoBadgeHelp"><b>DEMO</b> <span data-i18n="demoBadge"></span></div>
 <svg id="map"><defs>
   <clipPath id="avatarClip"><circle cx="34" cy="32" r="20"/></clipPath>
   <symbol id="pic-U" viewBox="0 0 40 40"><circle cx="20" cy="15" r="7.5"/><path d="M5 40c0-10 6.5-15.5 15-15.5S35 30 35 40z"/></symbol>
@@ -85,7 +88,7 @@
 <script src="data.js"></script>
 <script src="i18n.js"></script>
 <script>
-const LANG_KEY = "stammbaum-lang";
+const LANG_KEY = STORE + "-lang";
 let lang = (() => {
   const q = new URLSearchParams(location.search).get("lang");
   if (q in TEXT) return q;
@@ -174,13 +177,13 @@ function applyThemeButton() {
 }
 function setTheme(th, save = true) {
   document.documentElement.dataset.theme = th;
-  if (save) try { localStorage.setItem("stammbaum-theme", th); } catch {}
+  if (save) try { localStorage.setItem(STORE + "-theme", th); } catch {}
   applyThemeButton();
   themeListeners.forEach(fn => fn());
 }
 document.getElementById("btnTheme").onclick = () => setTheme(theme() === "dark" ? "light" : "dark");
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e => {   // follow the system until the user chooses
-  let saved = null; try { saved = localStorage.getItem("stammbaum-theme"); } catch {}
+  let saved = null; try { saved = localStorage.getItem(STORE + "-theme"); } catch {}
   if (!saved) setTheme(e.matches ? "dark" : "light", false);
 });
 applyLang();
@@ -500,7 +503,7 @@ function startViewer(data) {
 
     // photo toggle (remembered per browser); text moves right and is clipped shorter next to the avatar
     let showPhotos = true;
-    try { showPhotos = localStorage.getItem("stammbaum-photos") !== "0"; } catch {}
+    try { showPhotos = localStorage.getItem(STORE + "-photos") !== "0"; } catch {}
     function applyPhotos() {
       viewport.classed("photos", showPhotos);
       const x = showPhotos ? 62 : 14;
@@ -527,7 +530,7 @@ function startViewer(data) {
     applyPhotos();
     document.getElementById("btnPhotos").onclick = () => {
       showPhotos = !showPhotos;
-      try { localStorage.setItem("stammbaum-photos", showPhotos ? "1" : "0"); } catch {}
+      try { localStorage.setItem(STORE + "-photos", showPhotos ? "1" : "0"); } catch {}
       applyPhotos();
     };
     langListeners.push(applyPhotos);
@@ -1097,7 +1100,7 @@ function startViewer(data) {
       ["OCCU", "occupation", "occupation"], ["RELI", "religion", "religion"], ["ADDR.LAST", "addrLast", "addrLast"],
       ["PHON", "phone", "phone"], ["NOTE", "note", "note", "text"],
     ];
-    const EDITS_KEY = "stammbaum-edits";
+    const EDITS_KEY = STORE + "-edits";
     let editOn = false, adding = null;
     let edits = { set: {}, add: [], photos: [], docs: [], del: [], seq: 0 };
     try { edits = JSON.parse(localStorage.getItem(EDITS_KEY)) || edits; } catch {}
@@ -1508,7 +1511,7 @@ async function decrypt(enc, password) {
 function showLock(enc) {
   const lock = document.getElementById("lock"), form = document.getElementById("lockForm");
   const input = document.getElementById("lockPw"), msg = document.getElementById("lockMsg");
-  const SKEY = "stammbaum-pw";
+  const SKEY = STORE + "-pw";
   async function tryOpen(pw, fromSession) {
     msg.textContent = t("decrypting");
     try {
@@ -1536,6 +1539,7 @@ function showLock(enc) {
 if (window.FAMILY_DATA) startViewer(window.FAMILY_DATA);
 else if (window.FAMILY_DATA_ENC) showLock(window.FAMILY_DATA_ENC);
 else document.getElementById("loading").textContent = t("noData");
+if (document.documentElement.hasAttribute("data-demo")) document.getElementById("demoBadge").hidden = false;
 </script>
 </body>
 </html>

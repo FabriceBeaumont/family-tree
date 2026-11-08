@@ -406,7 +406,8 @@ def clean(rows: list[dict[str, str]], fixes, countries: dict[str, str],
     for row in out:
         pid = row["#REFN"].strip("@")
         if row.get("SEX") == "F" and not row.get("SURN.MARR"):
-            slots = [n for n in (1, 2, 3) if row.get(f"MARR.SPOU.#REFN.{n}") and row.get(f"FAM.DIV.{n}") != "Y"]
+            slots = [n for n in (1, 2, 3) if row.get(f"MARR.SPOU.#REFN.{n}") and row.get(f"FAM.DIV.{n}") != "Y"
+                     and row.get(f"FAM._STAT.{n}") != "NOT MARRIED"]      # an unmarried partner gives no name
             if slots:
                 dated = all(row.get(f"MARR.DATE.{n}") for n in slots)
                 n = max(slots, key=lambda k: row[f"MARR.DATE.{k}"]) if dated else max(slots)

@@ -63,7 +63,7 @@ def family() -> dict[str, dict]:
                       OCCU="Schlosser", NOTE="Karli")
     lina = person("I5", "Lina", "Probe", "F")
     couple(karl_dup, lina, date="1950")
-    stray = person("I6", "...", "Frels", "M")
+    stray = person("I6", "...", "Fremd", "M")
     return {r["#REFN"].strip("@"): r for r in (hans, erna, karl, grete, karl_dup, lina, stray)}
 
 

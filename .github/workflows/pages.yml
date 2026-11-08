@@ -26,10 +26,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Refuse to publish unencrypted data
+        # Real tree: only the encrypted data.enc.js. The one plain data.js allowed is the made-up demo
+        # family in public/demo/ (built by `python src/build_web.py --sample`, marked "demo": true).
         run: |
-          if [ -e public/data.js ] || ! grep -q "FAMILY_DATA_ENC" public/data.enc.js; then
-            echo "public/ must contain only the encrypted data.enc.js"; exit 1
+          if ! grep -q "FAMILY_DATA_ENC" public/data.enc.js; then
+            echo "public/data.enc.js must be the encrypted tree"; exit 1
           fi
+          for f in $(find public -name data.js); do
+            if [ "$f" != "public/demo/data.js" ] || ! grep -q '"demo": true' "$f"; then
+              echo "unencrypted data outside the demo: $f"; exit 1
+            fi
+          done
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

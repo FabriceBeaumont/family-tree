@@ -18,6 +18,8 @@ const generationOf = year => year ? GENERATIONS.find(g => year >= g.from && year
 
 const TEXT = {
   de: {
+    demoBadge: "erfundene Beispielfamilie",
+    demoBadgeHelp: "Demo: alle Personen, Daten und Bilder sind erfunden. Änderungen im Bearbeiten-Modus bleiben nur in diesem Browser.",
     title: "Stammbaum Explorer", loading: "Layout wird berechnet…", layoutError: "Layout-Fehler: ",
     noData: "Keine Daten gefunden – bitte python src/build_web.py ausführen.",
     lockTitle: "Stammbaum", lockText: "Dieser Stammbaum ist passwortgeschützt.", password: "Passwort",
@@ -100,6 +102,8 @@ const TEXT = {
     familyTreeHelp: "Alle Blutsverwandten der ausgewählten Person (Vorfahren und deren Nachkommen, beide Seiten) plus deren Partner – also auch alle Angeheirateten. Deren eigene Eltern und Vorfahren gehören nicht dazu.",
   },
   en: {
+    demoBadge: "made-up sample family",
+    demoBadgeHelp: "Demo: all people, dates and pictures are invented. Changes in edit mode stay in this browser only.",
     title: "Family Tree Explorer", loading: "Calculating layout…", layoutError: "Layout error: ",
     noData: "No data found – please run python src/build_web.py.",
     lockTitle: "Family tree", lockText: "This family tree is password-protected.", password: "Password",

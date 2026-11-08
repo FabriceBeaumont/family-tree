@@ -127,3 +127,10 @@ def test_wife_gets_the_husbands_surname_as_married_name(family):
     rows, _ = run(family)
     assert rows["I2"]["SURN"] == "Beispiel"                # birth surname stays
     assert rows["I2"]["SURN.MARR"] == "Muster"
+
+
+def test_an_unmarried_partner_gives_no_surname(family):
+    for pid in ("I4", "I5"):
+        family[pid]["FAM._STAT.1"] = "NOT MARRIED"
+    rows, _ = run(family)
+    assert not rows["I5"].get("SURN.MARR")

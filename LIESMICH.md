@@ -17,6 +17,17 @@ klicken, um mehr über sie zu erfahren.
    Stammbaum pflegt) – einfach nachfragen. Das Passwort steht nirgends auf dieser Seite.
 3. Passwort eingeben und auf **Öffnen** klicken. Nach ein paar Sekunden erscheint der Stammbaum.
 
+### 🧪 Demo ausprobieren (ohne Passwort)
+
+**[Demo öffnen](https://fabricebeaumont.github.io/family-tree/demo/?lang=de)** – derselbe Stammbaum mit der
+erfundenen Familie *Wurzel* (45 erfundene Personen, gezeichnete Bilder, ausgedachte Dokumente). Nichts darin
+ist echt, und die Demo ist vollständig von unserem Stammbaum getrennt.
+
+| | |
+|---|---|
+| ![Personendetails](docs/screenshots/02_person.png) | ![Verwandtschaft](docs/screenshots/03_relations.png) |
+| ![Blutsverwandte](docs/screenshots/04_blood_relatives.png) | ![Jahrhunderte](docs/screenshots/05_centuries.png) |
+
 ## So funktioniert's
 
 | Um … | so geht's |
