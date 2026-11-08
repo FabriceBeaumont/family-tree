@@ -65,7 +65,7 @@ a password and published with GitHub Pages.
 
 | Folder | Committed? | Contents |
 |---|---|---|
-| `src/` | yes | `build_web.py` (CSV → viewer), `index.html` (viewer template), `clean_csv.py` (CSV → cleaned copy) |
+| `src/` | yes | `build_web.py` (CSV → viewer), `index.html` + `style.css` + `i18n.js` (viewer: page and logic, styles, DE/EN texts – the build joins them into one `index.html`), `clean_csv.py` (CSV → cleaned copy) |
 | `public/` | yes (generated) | Password-encrypted viewer, deployed to GitHub Pages |
 | `docs/` | yes | Blank questionnaire for collecting data from relatives |
 | `data/` | **no** (private) | `ahnenblatt/` (`.ahn` + CSV export), `exports/` (HTML + PDF reports), `img/` (photos), `archive/` |
