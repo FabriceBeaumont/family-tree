@@ -37,7 +37,7 @@ Card colors: **blue** = male, **pink** = female.
 ## Found a mistake or know more?
 
 Missing someone, a wrong date, or an old photo? Click **✏️** at the top, correct the details, add people
-and photos or mark a stray entry with the red **Delete person** button, then click **Changes** → **Download as file** and send the file to Fabrice. Nothing is changed
+and photos or mark a stray entry with the red **Delete person** button, then click **Changes** → **Download as file** and send the file to Fabrice (with new photos it is a ZIP file holding the changes and the photos). Nothing is changed
 online – he checks every change before it appears. Or simply tell him. If you want to collect details
 about your branch, there is a simple questionnaire to fill in:
 [docs/Fragebogen Familienstammbaum.xlsx](docs/Fragebogen%20Familienstammbaum.xlsx).
@@ -81,7 +81,7 @@ family live in private files next to it (`manual_fixes.tsv`, `place_countries.ts
 
 **Editing:** the ✏️ button in the viewer turns the info panel into a form. Changes are only collected in your browser and downloaded as a file; nothing is saved
 online. Put the file into `data/cleaned/inbox/` and run `python src/review_edits.py`: it shows every
-change and only what you accept goes into the private fix files (accepted photos are saved into
+change and only what you accept goes into the private fix files (a downloaded ZIP is unpacked first; accepted photos are saved into
 `data/img/` with the right name; an accepted deletion becomes an `<ID>  #DELETE` line in
 `manual_fixes.tsv`, which removes the person and every link to them; `<duplicate>  #MERGE  *  <keeper>` folds a duplicate
 entry into the person it duplicates). Then publish as usual.

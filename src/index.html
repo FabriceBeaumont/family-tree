@@ -525,11 +525,13 @@ const TEXT = {
     editMode: "Bearbeiten", editHelp: "Bearbeiten: Angaben korrigieren, Personen und Fotos hinzufügen oder Personen zum Löschen vormerken. Die Änderungen werden nur in diesem Browser gesammelt – als Datei herunterladen und an Fabrice schicken. Er prüft jede Änderung, bevor sie im Stammbaum erscheint.",
     editsCount: "Änderungen ({n})", editsTitle: "Gesammelte Änderungen", editsNone: "Noch keine Änderungen.",
     editsDownload: "Als Datei herunterladen", editsDiscard: "Alle verwerfen", editsDiscardAsk: "Alle gesammelten Änderungen verwerfen?",
-    editsHint: "Die Datei an Fabrice schicken (z. B. per E-Mail). Er prüft jede Änderung einzeln, bevor sie veröffentlicht wird. (Für Fabrice: nach data/cleaned/inbox/ legen und python src/review_edits.py ausführen.)",
+    editsHint: "Die Datei an Fabrice schicken (z. B. per E-Mail). Mit neuen Fotos ist es eine ZIP-Datei mit den Änderungen und allen Fotos – bitte die ZIP-Datei unverändert schicken. Er prüft jede Änderung einzeln, bevor sie veröffentlicht wird. (Für Fabrice: nach data/cleaned/inbox/ legen und python src/review_edits.py ausführen.)",
     editApply: "Übernehmen", editReset: "Zurücksetzen", editBadDate: "Datum bitte als JJJJ, JJJJ-MM oder JJJJ-MM-TT eingeben.",
     editDateHint: "JJJJ, JJJJ-MM oder JJJJ-MM-TT", editNew: "Neu", editAddChild: "+ Kind", editAddParent: "+ Elternteil", editAddPartner: "+ Partner",
     editNewChild: "Neues Kind von {name}", editNewParent: "Neuer Elternteil von {name}", editNewPartner: "Neuer Partner von {name}",
-    editAddPhoto: "Foto auswählen …", editPhotoDate: "Datum des Fotos", editNewPhoto: "neues Foto",
+    editAddPhoto: "Foto auswählen …", editPhotoDate: "Jahr des Fotos", editNewPhoto: "neues Foto",
+    editYearHint: "JJJJ, z. B. 1952", editBadYear: "Jahr bitte vierstellig eingeben (z. B. 1952) oder leer lassen.",
+    editPhotoNote: "Beschreibung", editPhotoNoteHint: "Wer ist zu sehen, Anlass, Ort … (steht später unter dem Foto)",
     editPhotoBad: "Das Bild konnte nicht gelesen werden (JPG, PNG oder WebP).", editStorageFull: "Der Browser-Speicher ist voll – bitte erst die gesammelten Änderungen herunterladen.",
     editAdd: "Hinzufügen", editCancel: "Abbrechen", editParentFull: "Hat schon Vater und Mutter.",
     editDelete: "Person löschen", editDeleteAsk: "{name} wirklich löschen? Die Person und alle ihre Verbindungen werden nach Fabrices Prüfung aus dem Stammbaum entfernt.",
@@ -602,11 +604,13 @@ const TEXT = {
     editMode: "Edit", editHelp: "Edit: correct details, add people and photos, or mark people for deletion. Changes are only collected in this browser – download them as a file and send it to Fabrice. He checks every change before it appears in the family tree.",
     editsCount: "Changes ({n})", editsTitle: "Collected changes", editsNone: "No changes yet.",
     editsDownload: "Download as file", editsDiscard: "Discard all", editsDiscardAsk: "Discard all collected changes?",
-    editsHint: "Send the file to Fabrice (e.g. by e-mail). He checks every change before it is published. (For Fabrice: put it into data/cleaned/inbox/ and run python src/review_edits.py.)",
+    editsHint: "Send the file to Fabrice (e.g. by e-mail). With new photos it is a ZIP file holding the changes and all photos – please send the ZIP file as it is. He checks every change before it is published. (For Fabrice: put it into data/cleaned/inbox/ and run python src/review_edits.py.)",
     editApply: "Apply", editReset: "Reset", editBadDate: "Please enter dates as YYYY, YYYY-MM or YYYY-MM-DD.",
     editDateHint: "YYYY, YYYY-MM or YYYY-MM-DD", editNew: "New", editAddChild: "+ Child", editAddParent: "+ Parent", editAddPartner: "+ Partner",
     editNewChild: "New child of {name}", editNewParent: "New parent of {name}", editNewPartner: "New partner of {name}",
-    editAddPhoto: "Choose photo …", editPhotoDate: "Date of the photo", editNewPhoto: "new photo",
+    editAddPhoto: "Choose photo …", editPhotoDate: "Year of the photo", editNewPhoto: "new photo",
+    editYearHint: "YYYY, e.g. 1952", editBadYear: "Please enter a four-digit year (e.g. 1952) or leave it empty.",
+    editPhotoNote: "Description", editPhotoNoteHint: "Who is in it, occasion, place … (shown under the photo later)",
     editPhotoBad: "The image could not be read (JPG, PNG or WebP).", editStorageFull: "The browser storage is full – please download the collected changes first.",
     editAdd: "Add", editCancel: "Cancel", editParentFull: "Already has a father and a mother.",
     editDelete: "Delete person", editDeleteAsk: "Really delete {name}? After Fabrice's review the person and all their links are removed from the family tree.",
@@ -1697,8 +1701,9 @@ function startViewer(data) {
           <button type="button" class="btn" data-edit="partner">${t("editAddPartner")}</button></div>${addForm}
         <form class="editForm" data-photoform>
           <h4>${t("photos")} (${(p.photos || []).length})</h4>
-          ${edits.photos.filter(ph => ph.id === p.id).map(ph => `<div class="row pending"><img src="${ph.src}" alt=""><span>${esc(ph.date ? fmtDate(ph.date) : t("photoUndated"))} · ${t("editNew")}</span><button type="button" class="btn" data-edit="photoDel:${ph.key}">×</button></div>`).join("")}
-          <label>${t("editPhotoDate")}</label><input name="PDATE" placeholder="${esc(t("editDateHint"))}">
+          ${edits.photos.filter(ph => ph.id === p.id).map(ph => `<div class="row pending"><img src="${ph.src}" alt=""><span>${esc(ph.date ? fmtDate(ph.date) : t("photoUndated"))} · ${t("editNew")} · ${esc(photoFile(ph))}${ph.note ? `<br>${esc(ph.note)}` : ""}</span><button type="button" class="btn" data-edit="photoDel:${ph.key}">×</button></div>`).join("")}
+          <label>${t("editPhotoDate")}</label><input name="PDATE" inputmode="numeric" maxlength="4" placeholder="${esc(t("editYearHint"))}">
+          <label>${t("editPhotoNote")}</label><textarea name="PNOTE" placeholder="${esc(t("editPhotoNoteHint"))}"></textarea>
           <div class="err" hidden></div>
           <div class="row"><input type="file" name="PFILE" accept="image/jpeg,image/png,image/webp" hidden><button type="button" class="btn primary" data-edit="photoPick">${t("editAddPhoto")}</button></div>
         </form>
@@ -1714,17 +1719,28 @@ function startViewer(data) {
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
       return c.toDataURL("image/jpeg", 0.85);
     }
+    // file name of a new photo in the download: <ID>[_<year>].jpg, _2, _3 … when the name is taken
+    function photoFile(ph) {
+      if (ph.file) return ph.file;
+      const stem = ph.id + (ph.date ? "_" + ph.date.slice(0, 4) : ""), taken = new Set(edits.photos.map(x => x.file).filter(Boolean));
+      let name = stem + ".jpg";
+      for (let n = 2; taken.has(name); n++) name = `${stem}_${n}.jpg`;
+      return name;
+    }
     function editAction(what) {
       const p = people.get(selected), body = document.getElementById("panelBody");
       if (what === "photoPick") {
         const form = body.querySelector("[data-photoform]"), date = form.elements.PDATE.value.trim(), err = form.querySelector(".err");
-        if (!isDate(date)) { err.hidden = false; err.textContent = t("editBadDate"); return; }
+        const note = form.elements.PNOTE.value.trim();
+        if (date && !/^\d{4}$/.test(date)) { err.hidden = false; err.textContent = t("editBadYear"); return; }
         const picker = form.elements.PFILE;
         picker.onchange = async () => {
           const file = picker.files[0]; if (!file) return;
           try {
             const src = await shrinkImage(file);
-            edits.photos.push({ key: "P" + (++edits.seq), id: p.id, date, src, name: file.name });
+            const ph = { key: "P" + (++edits.seq), id: p.id, date, src, name: file.name, note };
+            ph.file = photoFile(ph);                    // <ID>_<year>.jpg, the name inside the downloaded zip
+            edits.photos.push(ph);
             if (!saveEdits()) edits.photos.pop();
           } catch { err.hidden = false; err.textContent = t("editPhotoBad"); return; }
           showPanel(p);
@@ -1811,7 +1827,7 @@ function startViewer(data) {
         const p = people.get(pid), key = (EDIT_FIELDS.find(x => x[0] === col) || [])[1];
         items.push(`<li><span class="what"><b>${esc(fullName(p))}</b> · ${esc(colLabel(col))}: <del>${esc((key && p[key]) || "–")}</del> → <ins>${esc(val || "–")}</ins></span><button class="x" data-del="set|${pid}|${col}" aria-label="×">×</button></li>`);
       }
-      for (const ph of edits.photos) items.push(`<li><img class="thumb" src="${ph.src}" alt=""><span class="what"><b>${esc(fullName(people.get(ph.id)))}</b> · ${t("editNewPhoto")} (${esc(ph.date ? fmtDate(ph.date) : t("photoUndated"))})</span><button class="x" data-del="photo|${ph.key}" aria-label="×">×</button></li>`);
+      for (const ph of edits.photos) items.push(`<li><img class="thumb" src="${ph.src}" alt=""><span class="what"><b>${esc(fullName(people.get(ph.id)))}</b> · ${t("editNewPhoto")} (${esc(ph.date ? fmtDate(ph.date) : t("photoUndated"))}) · ${esc(photoFile(ph))}${ph.note ? ` – ${esc(ph.note)}` : ""}</span><button class="x" data-del="photo|${ph.key}" aria-label="×">×</button></li>`);
       for (const id of edits.del) items.push(`<li class="del"><span class="what"><b>${esc(fullName(people.get(id)))}</b> · ${t("editDeleteItem")}</span><button class="x" data-del="del|${id}" aria-label="×">×</button></li>`);
       for (const a of edits.add) items.push(`<li><span class="what"><b>${t("editNew")}: ${esc([a.cols.GIVN, a.cols.SURN].filter(Boolean).join(" "))}</b> · ${esc(a.note)}</span><button class="x" data-del="add|${a.id}" aria-label="×">×</button></li>`);
       document.getElementById("editsBody").innerHTML = (items.length ? `<ul>${items.join("")}</ul>` : `<p>${t("editsNone")}</p>`) + `<p class="sub">${t("editsHint")}</p>`;
@@ -1844,15 +1860,41 @@ function startViewer(data) {
         const key = (EDIT_FIELDS.find(x => x[0] === col) || [])[1], p = people.get(pid);
         lines.push(["set", pid, col, clean((key && p[key]) || ""), clean(val)].join("\t"));
       }
-      for (const ph of edits.photos) lines.push(["photo", ph.id, ph.date || "", clean(ph.name || ""), ph.src].join("\t"));
-      for (const id of edits.del) lines.push(["delete", id, "", clean(fullName(people.get(id))), ""].join("	"));
+      for (const ph of edits.photos) { ph.file = photoFile(ph); lines.push(["photo", ph.id, ph.date || "", ph.file, clean(ph.note || "")].join("\t")); }
+      for (const id of edits.del) lines.push(["delete", id, "", clean(fullName(people.get(id))), ""].join("\t"));
       for (const a of edits.add) for (const [col, val] of Object.entries(a.cols)) lines.push(["new", a.id, col, "", clean(val)].join("\t"));
       const d = new Date(), two = n => String(n).padStart(2, "0");    // local time, sorts by date
       const stamp = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}_${two(d.getHours())}-${two(d.getMinutes())}`;
-      const url = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], { type: "text/tab-separated-values" }));
-      const link = Object.assign(document.createElement("a"), { href: url, download: `${stamp}_edits.tsv` });
-      document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+      const tsv = new TextEncoder().encode(lines.join("\n") + "\n");
+      if (!edits.photos.length) return saveBlob(new Blob([tsv], { type: "text/tab-separated-values" }), `${stamp}_edits.tsv`);
+      const bytes = src => Uint8Array.from(atob(src.split(",")[1]), ch => ch.charCodeAt(0));   // data: URL -> JPEG bytes
+      saveBlob(makeZip([{ name: `${stamp}_edits.tsv`, data: tsv }, ...edits.photos.map(ph => ({ name: ph.file, data: bytes(ph.src) }))]), `${stamp}_edits.zip`);
     };
+    function saveBlob(blob, name) {
+      const url = URL.createObjectURL(blob), link = Object.assign(document.createElement("a"), { href: url, download: name });
+      document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+    // minimal ZIP writer (stored, no compression – the photos are JPEGs already); names in UTF-8
+    function makeZip(files) {
+      const table = Array.from({ length: 256 }, (_, n) => { for (let k = 0; k < 8; k++) n = n & 1 ? 0xEDB88320 ^ (n >>> 1) : n >>> 1; return n >>> 0; });
+      const crc32 = data => { let c = 0xFFFFFFFF; for (const b of data) c = table[(c ^ b) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+      const d = new Date(), time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+      const date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+      const put = (view, fields) => fields.forEach(([at, v, n]) => n === 4 ? view.setUint32(at, v, true) : view.setUint16(at, v, true));
+      const parts = [], central = [], enc = new TextEncoder();
+      let offset = 0;
+      for (const f of files) {
+        const name = enc.encode(f.name), crc = crc32(f.data), size = f.data.length;
+        const head = new DataView(new ArrayBuffer(30)), dir = new DataView(new ArrayBuffer(46));
+        put(head, [[0, 0x04034b50, 4], [4, 20, 2], [6, 0x0800, 2], [10, time, 2], [12, date, 2], [14, crc, 4], [18, size, 4], [22, size, 4], [26, name.length, 2]]);
+        put(dir, [[0, 0x02014b50, 4], [4, 20, 2], [6, 20, 2], [8, 0x0800, 2], [12, time, 2], [14, date, 2], [16, crc, 4], [20, size, 4], [24, size, 4], [28, name.length, 2], [42, offset, 4]]);
+        parts.push(head, name, f.data); central.push(dir, name);
+        offset += 30 + name.length + size;
+      }
+      const dirSize = central.reduce((a, x) => a + x.byteLength, 0), end = new DataView(new ArrayBuffer(22));
+      put(end, [[0, 0x06054b50, 4], [8, files.length, 2], [10, files.length, 2], [12, dirSize, 4], [16, offset, 4]]);
+      return new Blob([...parts, ...central, end], { type: "application/zip" });
+    }
     langListeners.push(() => { updateEditButtons(); if (editsBox.open) renderEdits(); });
     updateEditButtons();
 
