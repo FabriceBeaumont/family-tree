@@ -185,6 +185,9 @@ def build(rows: list[dict[str, str]]) -> dict:
             "surname": "" if surname in ("...", "?") else surname,
             "sex": clean(r.get("SEX")) or "U",
         }
+        married = clean(r.get("SURN.MARR")).strip('"')    # taken surname; "surname" stays the birth surname
+        if married and married != p["surname"]:
+            p["married"] = married
         for col, key in DETAIL_FIELDS.items():
             v = clean(r.get(col))
             if v:

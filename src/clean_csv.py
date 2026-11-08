@@ -71,13 +71,16 @@ class Cleaner:
     def ask(self, pid, col, value, problem, suggestion=""):
         self.review.append({"id": pid, "column": col, "value": value, "problem": problem, "suggestion": suggestion})
 
-    def apply_manual(self, pid: str, row: dict) -> None:
-        """Owner decisions from manual_fixes.tsv, applied to the raw values before the automatic rules."""
+    def apply_manual(self, pid: str, row: dict, only: str | None = None) -> None:
+        """Owner decisions from manual_fixes.tsv, applied to the raw values before the automatic rules
+        (only=<column>: just the fixes for that one column, for columns derived after the first pass)."""
         for fid, pattern, original, corrected in self.fixes:
             if fid not in ("*", pid):
                 continue
             append, remove = pattern.endswith("+"), pattern.endswith("-")
             pattern = pattern.rstrip("+-")
+            if only and pattern != only:
+                continue
             targets = [c for c in row if fnmatch.fnmatch(c, pattern)] if any(ch in pattern for ch in "*?[") else [pattern]
             for col in targets:
                 old = row.get(col) or ""
@@ -322,6 +325,22 @@ def clean(rows: list[dict[str, str]], fixes, countries: dict[str, str],
                     if date:
                         person[f"FAM.DIV.DATE.{k}"] = date
                     c.change(person["#REFN"].strip("@"), f"FAM.DIV.{k}", "", "Y" + (" " + date if date else ""), "divorce")
+
+    # taken (married) surname SURN.MARR: a copy of the husband's surname from her latest marriage that
+    # did not end in divorce (SURN stays the birth surname). Only filled when empty, so manual_fixes.tsv and
+    # edit mode can set it; SURN.MARR equal to SURN means "kept her birth name".
+    for row in out:
+        pid = row["#REFN"].strip("@")
+        if row.get("SEX") == "F" and not row.get("SURN.MARR"):
+            slots = [n for n in (1, 2, 3) if row.get(f"MARR.SPOU.#REFN.{n}") and row.get(f"FAM.DIV.{n}") != "Y"]
+            if slots:
+                dated = all(row.get(f"MARR.DATE.{n}") for n in slots)
+                n = max(slots, key=lambda k: row[f"MARR.DATE.{k}"]) if dated else max(slots)
+                husband = by_id.get(row[f"MARR.SPOU.#REFN.{n}"]) or {}
+                if husband.get("SURN") and husband["SURN"] != row.get("SURN"):
+                    row["SURN.MARR"] = husband["SURN"]
+                    c.change(pid, "SURN.MARR", "", husband["SURN"], "taken surname = husband's surname (copy)")
+        c.apply_manual(pid, row, only="SURN.MARR")       # corrections of the copied value
 
     # places that are probably the same, spelled differently (Musterau / Musterrau)
     places = sorted({row[col] for row in out for col in cols if PLACE_COLS.search(col) and row.get(col)})
