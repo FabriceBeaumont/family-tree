@@ -511,10 +511,10 @@ const TEXT = {
     gensHelp: "Begrenzt die direkte Linie der ausgewählten Person: ↑ wie viele Generationen Vorfahren, ↓ wie viele Generationen Nachkommen. Leer = alle. Mit Fokus werden nur diese Generationen gezeigt.",
     photos: "Fotos", photosHide: "Fotos ausblenden", photosShow: "Fotos einblenden",
     selectFirst: "Zuerst eine Person auswählen.",
-    editMode: "Bearbeiten", editHelp: "Bearbeiten (nur für dich): Angaben ändern und Personen hinzufügen. Änderungen werden nur in diesem Browser gesammelt; als Datei herunterladen, mit review_edits.py prüfen, dann veröffentlichen.",
+    editMode: "Bearbeiten", editHelp: "Bearbeiten: Angaben korrigieren, Personen und Fotos hinzufügen. Die Änderungen werden nur in diesem Browser gesammelt – als Datei herunterladen und an Fabrice schicken. Er prüft jede Änderung, bevor sie im Stammbaum erscheint.",
     editsCount: "Änderungen ({n})", editsTitle: "Gesammelte Änderungen", editsNone: "Noch keine Änderungen.",
     editsDownload: "Als Datei herunterladen", editsDiscard: "Alle verwerfen", editsDiscardAsk: "Alle gesammelten Änderungen verwerfen?",
-    editsHint: "Datei nach data/cleaned/inbox/ legen und python src/review_edits.py ausführen – dort wird jede Änderung einzeln bestätigt.",
+    editsHint: "Die Datei an Fabrice schicken (z. B. per E-Mail). Er prüft jede Änderung einzeln, bevor sie veröffentlicht wird. (Für Fabrice: nach data/cleaned/inbox/ legen und python src/review_edits.py ausführen.)",
     editApply: "Übernehmen", editReset: "Zurücksetzen", editBadDate: "Datum bitte als JJJJ, JJJJ-MM oder JJJJ-MM-TT eingeben.",
     editDateHint: "JJJJ, JJJJ-MM oder JJJJ-MM-TT", editNew: "Neu", editAddChild: "+ Kind", editAddParent: "+ Elternteil", editAddPartner: "+ Partner",
     editNewChild: "Neues Kind von {name}", editNewParent: "Neuer Elternteil von {name}", editNewPartner: "Neuer Partner von {name}",
@@ -538,6 +538,7 @@ const TEXT = {
     helpPhotos: "<b>Fotos</b> – Fotos bzw. Platzhalter-Figuren ein- oder ausblenden. Klick auf ein Foto vergrößert es; mit ‹ › bzw. Wischen durch weitere Fotos blättern.",
     helpTheme: "<b>Design</b> – zwischen hellem und dunklem Design wechseln.",
     helpLang: "<b>Sprache</b> – Deutsch / Englisch.",
+    helpEdit: "<b>Bearbeiten</b> – Angaben korrigieren, Personen oder Fotos hinzufügen; unter „Änderungen“ als Datei herunterladen und an Fabrice schicken. Nichts wird sofort veröffentlicht.",
     helpDirect: "<b>Direkte Linie</b> – Eltern, Großeltern … und Kinder, Enkel … der ausgewählten Person.",
     helpPartners: "<b>Partner</b> – Rahmen und Ehelinie in Blau (Mann) bzw. Rot (Frau).",
     helpDivorced: "<b>Getrennt / geschieden</b> – gepunktete graue Linie zwischen den Partnern.",
@@ -584,10 +585,10 @@ const TEXT = {
     gensHelp: "Limits the selected person's direct line: ↑ how many generations of ancestors, ↓ how many generations of descendants. Empty = all. With Focus, only these generations are shown.",
     photos: "Photos", photosHide: "Hide photos", photosShow: "Show photos",
     selectFirst: "Select a person first.",
-    editMode: "Edit", editHelp: "Edit (for you only): change details and add people. Changes are only collected in this browser; download them as a file, check them with review_edits.py, then publish.",
+    editMode: "Edit", editHelp: "Edit: correct details, add people and photos. Changes are only collected in this browser – download them as a file and send it to Fabrice. He checks every change before it appears in the family tree.",
     editsCount: "Changes ({n})", editsTitle: "Collected changes", editsNone: "No changes yet.",
     editsDownload: "Download as file", editsDiscard: "Discard all", editsDiscardAsk: "Discard all collected changes?",
-    editsHint: "Put the file into data/cleaned/inbox/ and run python src/review_edits.py – every change is confirmed there one by one.",
+    editsHint: "Send the file to Fabrice (e.g. by e-mail). He checks every change before it is published. (For Fabrice: put it into data/cleaned/inbox/ and run python src/review_edits.py.)",
     editApply: "Apply", editReset: "Reset", editBadDate: "Please enter dates as YYYY, YYYY-MM or YYYY-MM-DD.",
     editDateHint: "YYYY, YYYY-MM or YYYY-MM-DD", editNew: "New", editAddChild: "+ Child", editAddParent: "+ Parent", editAddPartner: "+ Partner",
     editNewChild: "New child of {name}", editNewParent: "New parent of {name}", editNewPartner: "New partner of {name}",
@@ -611,6 +612,7 @@ const TEXT = {
     helpPhotos: "<b>Photos</b> – show or hide photos and placeholder figures. Click a photo to enlarge it; use ‹ › or swipe to see further photos.",
     helpTheme: "<b>Appearance</b> – switch between light and dark.",
     helpLang: "<b>Language</b> – German / English.",
+    helpEdit: "<b>Edit</b> – correct details, add people or photos; download them under “Changes” and send the file to Fabrice. Nothing is published right away.",
     helpDirect: "<b>Direct line</b> – parents, grandparents … and children, grandchildren … of the selected person.",
     helpPartners: "<b>Partners</b> – frame and marriage line in blue (male) or red (female).",
     helpDivorced: "<b>Separated / divorced</b> – dotted grey line between the partners.",
@@ -702,7 +704,7 @@ function renderHelp() {
     <h3>${t("helpControls")}</h3><dl>
       ${row("🔍", "helpSearch")}${row(icon("btnFit"), "helpFit")}${row("↑↓", "helpGens")}${row(icon("btnFocus"), "helpFocus")}
       ${row("🩸", "helpBlood")}${row("🌳", "helpTree")}${row("🕰️", "helpTime")}${row("👪", "helpRel")}${row(icon("btnPhotos"), "helpPhotos")}
-      ${row(document.getElementById("btnTheme").innerHTML, "helpTheme")}${row(lang === "de" ? "EN" : "DE", "helpLang")}</dl>
+      ${row(document.getElementById("btnTheme").innerHTML, "helpTheme")}${row(lang === "de" ? "EN" : "DE", "helpLang")}${row("✏️", "helpEdit")}</dl>
     <h3>${t("helpColors")}</h3><dl>
       ${row('<span class="swatch"></span>', "helpDirect")}${row('<span class="swatch spouse"></span>', "helpPartners")}${row('<span class="swatch divorced"></span>', "helpDivorced")}
       ${row('<span class="swatch sib"></span>', "helpSiblings")}${row('<span class="swatch bloodPat"></span><span class="swatch blood"></span><span class="swatch bloodMat"></span>', "helpBlood")}
@@ -1608,8 +1610,8 @@ function startViewer(data) {
     });
 
     // ---------- ✏️ edit mode: collect changes in this browser, export them for review ----------
-    // Only shown with ?admin. Nothing is saved online: the change file goes through review_edits.py.
-    const ADMIN = new URLSearchParams(location.search).has("admin");
+    // Available to everyone: nothing is saved online, a change file only takes effect after the
+    // owner has reviewed it with review_edits.py.
     const EDIT_FIELDS = [   // CSV column, person key, label, kind
       ["GIVN", "given", "fGiven"], ["SURN", "surname", "fSurname"], ["NAME._RUFNAME", "callName", "callName"],
       ["NICK", "nick", "nick"], ["TITL", "title", "persTitle"], ["SEX", "sex", "fSex", "sex"],
@@ -1745,9 +1747,9 @@ function startViewer(data) {
     }
     function updateEditButtons() {
       const be = document.getElementById("btnEdit"), bs = document.getElementById("btnEdits");
-      be.hidden = !ADMIN;
+      be.hidden = false;
       be.setAttribute("aria-pressed", editOn);
-      bs.hidden = !ADMIN || !editOn;
+      bs.hidden = !editOn;
       bs.querySelector(".lbl").textContent = t("editsCount").replace("{n}", editCount());
     }
     document.getElementById("btnEdit").onclick = () => {

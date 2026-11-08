@@ -37,7 +37,9 @@ Kartenfarben: **blau** = männlich, **rosa** = weiblich.
 
 ## Fehler entdeckt oder mehr gewusst?
 
-Fehlt jemand, stimmt ein Datum nicht, oder habt ihr alte Fotos? Bitte Fabrice Bescheid geben.
+Fehlt jemand, stimmt ein Datum nicht, oder habt ihr alte Fotos? Oben auf **✏️** klicken, Angaben korrigieren
+oder Personen und Fotos hinzufügen, dann **Änderungen** → **Als Datei herunterladen** und die Datei an Fabrice
+schicken. Online wird nichts verändert – er prüft jede Änderung, bevor sie erscheint. Oder ihm einfach Bescheid geben.
 Wer Angaben zu seinem Familienzweig sammeln möchte, kann dafür diesen einfachen Fragebogen
 ausfüllen: [docs/Fragebogen Familienstammbaum.xlsx](docs/Fragebogen%20Familienstammbaum.xlsx).
 
