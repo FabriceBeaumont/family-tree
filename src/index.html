@@ -546,7 +546,9 @@ function startViewer(data) {
     place();
 
     // ---------- pan & zoom ----------
+    let untouched = true;                         // nobody has panned, zoomed or selected yet: keep "all visible"
     const zoom = d3.zoom().scaleExtent([0.03, 2.5]).on("zoom", ev => {
+      if (ev.sourceEvent) untouched = false;
       viewport.attr("transform", ev.transform);
       viewport.classed("far", ev.transform.k < 0.33);
       drawMinimap(ev.transform);
@@ -572,8 +574,9 @@ function startViewer(data) {
     function fitAll(ms = 750) {
       const v = visibleArea();
       const k = Math.min(v.w / bounds.w, v.h / bounds.h) * 0.95;
-      svg.transition().duration(ms).call(zoom.transform,
-        d3.zoomIdentity.translate(v.cx - bounds.w * k / 2, v.cy - bounds.h * k / 2).scale(k));
+      const to = d3.zoomIdentity.translate(v.cx - bounds.w * k / 2, v.cy - bounds.h * k / 2).scale(k);
+      if (ms) svg.transition().duration(ms).call(zoom.transform, to);
+      else svg.interrupt().call(zoom.transform, to);    // at once: no animation frame needed (background tab)
     }
 
     // ---------- selection & lineage ----------
@@ -1000,6 +1003,7 @@ function startViewer(data) {
     }
     function setCollapsed(c) { panelCollapsed = c; syncPanel(); if (!c) panelEl.focus({ preventScroll: true }); }
     function select(id, fly = false) {
+      untouched = false;
       selected = id;
       if (fly) panelCollapsed = false;
       applyHighlight();
@@ -1471,10 +1475,17 @@ function startViewer(data) {
     // ---------- start: whole tree, nobody preferred ----------
     document.getElementById("btnFit").onclick = () => {           // the only way to deselect
       clearSelection();
-      if (!(focusOn && lastFocusSet.size)) fitAll();      // Fokus without a selection frames the highlighted group itself
+      if (!(focusOn && lastFocusSet.size)) { fitAll(); untouched = true; }   // Fokus without a selection frames the highlighted group itself
     };
     applyHighlight();                       // initial state of the header toggles and the legend
-    fitAll(0);
+    fitAll(0);                              // start like ⤢: the whole tree visible
+    // until the first pan / zoom / selection, keep it that way when the window size changes
+    // (window restored or rotated, password screen gone, browser bars appearing)
+    let fitTimer = 0;
+    addEventListener("resize", () => {
+      clearTimeout(fitTimer);
+      fitTimer = setTimeout(() => { if (untouched && !selected) fitAll(0); }, 150);
+    });
     document.getElementById("loading").remove();
   }
 
