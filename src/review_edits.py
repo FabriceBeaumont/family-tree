@@ -5,7 +5,7 @@ Usage:
     python src/review_edits.py --list     only show what is waiting, change nothing
 
 Workflow:
-    1. In the viewer (opened with ?admin) switch on ✏️, edit, then download the change file.
+    1. In the viewer switch on ✏️, edit, then download the change file.
     2. Put the downloaded <date>_<time>_edits.tsv into data/cleaned/inbox/.
     3. Run this script: every change is shown (current value -> new value); answer
        y = accept, n = reject, q = stop (the rest stays in the inbox for later).
@@ -13,7 +13,9 @@ Workflow:
        data/cleaned/new_people.tsv (new people, with real I-numbers). The file moves to inbox/done/.
     5. Check the result with `python src/build_web.py`, then publish as usual.
 
-Change file columns: action (set | new | photo), id, column, original, corrected.
+Change file columns: action (set | new | photo | delete), id, column, original, corrected.
+Delete rows: original = the person's name; an accepted one becomes `<id>  #DELETE` in manual_fixes.tsv,
+which makes clean_csv.py drop the person and every link to them.
 Photo rows: column = date (may be empty), original = original file name, corrected = data: URL (JPEG);
 accepted photos are saved as data/img/<ID>_<date>.jpg (or <ID>.jpg; a _2, _3 … suffix avoids overwriting).
 New people use temporary ids NEW1, NEW2 … which get the next free I-numbers here.
@@ -147,6 +149,23 @@ def review(path: Path, current: dict[str, dict[str, str]]) -> bool:
             return False
         if a == "y":
             fixes.append(f"{pid}\t{col}\t*\t{new}")
+    for c in changes:
+        if c["action"] != "delete":
+            continue
+        pid, row = c["id"], current.get(c["id"], {})
+        if not row:
+            print(f"\nDELETE {pid}: not in the data any more - skipped.")
+            continue
+        facts = ", ".join(f"{k} {row[k]}" for k in ("BIRT.DATE", "BIRT.PLAC", "DEAT.DATE", "DEAT.PLAC") if row.get(k))
+        links = sorted({row[k].strip("@") for k in ("FATH.#REFN", "MOTH.#REFN", "FAM.HUSB.1", "FAM.WIFE.1",
+                        "FAM.HUSB.2", "FAM.WIFE.2", "FAM.HUSB.3", "FAM.WIFE.3") if row.get(k)} - {pid})
+        print(f"\nDELETE {pid} {name(pid)}" + (f" ({facts})" if facts else "")
+              + (f"\n    linked to: {', '.join(links)}" if links else "\n    no links"))
+        a = ask("  delete this person? [y/n/q] ")
+        if a == "q":
+            return False
+        if a == "y":
+            fixes.append(f"{pid}\t#DELETE\t*\t")
     saved = []
     for c in changes:
         if c["action"] != "photo":

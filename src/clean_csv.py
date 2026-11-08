@@ -10,7 +10,9 @@ Writes (all inside the private, gitignored data/ folder):
     cleaning_review.csv       values that need a human decision (left unchanged in the clean copy)
 
 Generic rules live here. Data-specific input stays private in data/cleaned/ so no family data
-enters git: manual_fixes.tsv (owner decisions: id, column, original, corrected) and
+enters git: manual_fixes.tsv (owner decisions: id, column, original, corrected; the column
+#DELETE removes that person and every link to them; #MERGE with the keeper's id as corrected
+folds a duplicate into the keeper) and
 place_countries.tsv (place -> ISO country code, written to <place column>.CTRY) and
 new_people.tsv (people known only from notes: id + any CSV columns, parents as I-numbers).
 
@@ -38,7 +40,8 @@ DATE_COLS = re.compile(r"^(BIRT|DEAT|CHR|BURI|CONF)\.DATE$|^MARR\.DATE\.\d$")
 PLACE_COLS = re.compile(r"\.PLAC(\.\d)?$")
 NAME_PLACEHOLDERS = {"...", '"..."', "?", "(Geb.name unbek.)", "Geb.name unbek.", "(unleserlich)"}
 TITLE_RE = re.compile(r",?\s*\b(Prof\.|Dr\.(?:\s?(?:med|jur|phil|rer\. nat)\.?)?)(?=\s|,|$)")
-RELIGION = {"ev.-luth.": "ev.-luth.", "ev.luth.": "ev.-luth.", "kath.": "kath.", "röm. kath": "kath."}
+RELIGION = {"ev.-luth.": "ev.-luth.", "ev.luth.": "ev.-luth.", "kath.": "kath.", "röm. kath": "kath.",
+            "ev.": "ev.", "evangelisch": "ev.", "katholisch": "kath."}
 GEN_NUMBER = re.compile(r"\s*\bGeneration [IVX]+\b(\s+\d+)?")   # "Generation IV 7"
 PHONE = re.compile(r"^Tel\.\s*(.+)$")                                # "Tel. 0123-456789"
 DIVORCE = re.compile(r"^(?:geschieden|Scheidung(?: am (.+))?)$")
@@ -186,6 +189,64 @@ class Cleaner:
         return v
 
 
+LINK_COLS = re.compile(r"#REFN|^FAM\.(HUSB|WIFE|CHIL)\.\d$")
+SLOT_COL = re.compile(r"^(?:FAM|MARR)\..*\.(\d)$")
+
+
+def merge_duplicates(rows: list[dict], merges: dict[str, str], c: "Cleaner") -> list[dict]:
+    """Owner decision `<duplicate>  #MERGE  *  <keeper>`: the duplicate's links point to the keeper,
+    facts only the duplicate has fill the keeper's empty fields (a different NOTE is appended), a
+    partnership only the duplicate had moves into a free family slot of the keeper; then the
+    duplicate row is dropped."""
+    def final(i: str) -> str:                                 # follow chains A -> B -> C
+        seen = set()
+        while i in merges and i not in seen:
+            seen.add(i)
+            i = merges[i]
+        return i
+    by_id = {r["#REFN"].strip("@"): r for r in rows}
+    target = {d: final(k) for d, k in merges.items() if d in by_id and final(d) in by_id and final(d) != d}
+    ref = lambda v: "@" + target.get(v.strip("@"), v.strip("@")) + "@" if v.startswith("@") else v
+    for dup, keep in target.items():
+        d, k = by_id[dup], by_id[keep]
+        for col, v in d.items():                                 # facts the keeper does not have
+            if not v or col in ("#REFN", "_UID", "NAME") or SLOT_COL.match(col) or col.endswith(".NAME"):
+                continue
+            if not k.get(col):
+                k[col] = ref(v) if "#REFN" in col else v
+                c.change(keep, col, "", k[col], f"merged from duplicate {dup}")
+            elif col == "NOTE" and v not in k[col]:
+                k[col] = k[col] + "\r" + v
+                c.change(keep, col, "", v, f"note appended from duplicate {dup}")
+        def partner(r: dict, n: int) -> str:                    # the other person in family slot n
+            h, w = ref(r.get(f"FAM.HUSB.{n}") or ""), ref(r.get(f"FAM.WIFE.{n}") or "")
+            return w if h == "@" + keep + "@" else h
+        have = {partner(k, n) for n in (1, 2, 3) if k.get(f"FAM.HUSB.{n}") or k.get(f"FAM.WIFE.{n}")}
+        for n in (1, 2, 3):                                     # partnerships only the duplicate had
+            if not (d.get(f"FAM.HUSB.{n}") or d.get(f"FAM.WIFE.{n}")):
+                continue
+            p = partner(d, n)
+            if p in have:
+                continue
+            free = next((m for m in (1, 2, 3) if not (k.get(f"FAM.HUSB.{m}") or k.get(f"FAM.WIFE.{m}"))), None)
+            if free is None:
+                c.ask(keep, f"FAM.*.{n}", p, f"no free family slot for the partner of duplicate {dup}", "link by hand")
+                continue
+            for col, v in d.items():
+                if SLOT_COL.match(col) and col.endswith(f".{n}") and v:
+                    k[col[:-1] + str(free)] = v
+            have.add(p)
+            c.change(keep, f"FAM.*.{free}", "", p, f"partnership moved from duplicate {dup}")
+    out = [r for r in rows if r["#REFN"].strip("@") not in target]
+    for r in out:                                                # every link now points to the keeper
+        for col, v in r.items():
+            if v and LINK_COLS.search(col) and col != "#REFN" and v.strip("@") in target:
+                r[col] = ref(v)
+    for dup, keep in sorted(target.items()):
+        c.change(dup, "#REFN", "@" + dup + "@", "@" + keep + "@", "duplicate merged (manual_fixes.tsv #MERGE)")
+    return out
+
+
 def clean(rows: list[dict[str, str]], fixes, countries: dict[str, str],
           new_people: list[dict[str, str]] = (), review_notes: bool = False) -> tuple[list[dict], list[str], Cleaner]:
     c = Cleaner(fixes)
@@ -202,6 +263,19 @@ def clean(rows: list[dict[str, str]], fixes, countries: dict[str, str],
         row.pop("id", None)
         rows.append(row)
         c.change(np["id"], "#REFN", "", row["#REFN"], "new person (new_people.tsv)")
+    deleted = {fid for fid, col, _, _ in c.fixes if col == "#DELETE"}   # owner decision: drop the person
+    if deleted:
+        rows = [r for r in rows if r["#REFN"].strip("@") not in deleted]
+        refs = {"@" + d + "@" for d in deleted}
+        for r in rows:                                       # links to a deleted person disappear too
+            for col, v in r.items():
+                if v in refs and ("#REFN" in col or col.startswith("FAM.")):
+                    r[col] = ""
+        for d in sorted(deleted):
+            c.change(d, "#REFN", "@" + d + "@", "", "person deleted (manual_fixes.tsv #DELETE)")
+    merges = {fid: corr.strip("@") for fid, col, _, corr in c.fixes if col == "#MERGE" and corr}
+    if merges:
+        rows = merge_duplicates(rows, merges, c)
     no_country: dict[str, int] = {}
     cols = list(rows[0].keys())
     out = []

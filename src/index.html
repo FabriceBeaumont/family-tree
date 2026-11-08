@@ -30,6 +30,7 @@
     --unknown: #8e8e93;
     --accent: #f08a00;        /* selection + lineage */
     --blood: #d70015;         /* blood relatives on both sides */
+    --danger: #d70015;        /* destructive buttons (delete) */
     --blood-pat: #9e1030;     /* father's side */
     --blood-mat: #ff6a5c;     /* mother's side */
     --tree-line: #8a5a2b;     /* family-tree mode lines (brown) */
@@ -54,6 +55,7 @@
       --unknown: #8e8e93;
       --accent: #ff9f0a;
       --blood: #ff453a;
+      --danger: #ff453a;
       --blood-pat: #e0405f;
       --blood-mat: #ff9a8f;
       --tree-line: #c08a55;
@@ -137,8 +139,12 @@
   .editForm .row.pending img, #editsBody .thumb { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: none; }
   .editForm .row.pending span { flex: 1; color: var(--muted); }
   .editAdd { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
-  .editAdd .btn, .editForm .btn, .editsActions .btn { height: 32px; padding: 0 12px; font-size: 13px; background: var(--card); border: 1px solid var(--card-stroke); }
+  .editAdd .btn, .editForm .btn, .editsActions .btn, .editDanger .btn { height: 32px; padding: 0 12px; font-size: 13px; background: var(--card); border: 1px solid var(--card-stroke); }
   .btn.primary { background: var(--accent) !important; color: #fff; border-color: transparent !important; }
+  .btn.danger { background: var(--danger) !important; color: #fff; border-color: transparent !important; }
+  .editDanger { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--card-stroke); }
+  .editDanger p { flex: 1; margin: 0; color: var(--danger); font-weight: 600; }
+  #editsBody li.del .what b { color: var(--danger); }
   #editsBox { width: min(620px, calc(100% - 32px)); max-height: min(85vh, 760px); padding: 0; border-radius: 18px; color: var(--ink); background: var(--card); }
   #editsBox[open] { display: flex; flex-direction: column; }
   #editsBox::backdrop { background: rgba(0, 0, 0, .35); }
@@ -516,7 +522,7 @@ const TEXT = {
     gensHelp: "Begrenzt die direkte Linie der ausgewählten Person: ↑ wie viele Generationen Vorfahren, ↓ wie viele Generationen Nachkommen. Leer = alle. Mit Fokus werden nur diese Generationen gezeigt.",
     photos: "Fotos", photosHide: "Fotos ausblenden", photosShow: "Fotos einblenden",
     selectFirst: "Zuerst eine Person auswählen.",
-    editMode: "Bearbeiten", editHelp: "Bearbeiten: Angaben korrigieren, Personen und Fotos hinzufügen. Die Änderungen werden nur in diesem Browser gesammelt – als Datei herunterladen und an Fabrice schicken. Er prüft jede Änderung, bevor sie im Stammbaum erscheint.",
+    editMode: "Bearbeiten", editHelp: "Bearbeiten: Angaben korrigieren, Personen und Fotos hinzufügen oder Personen zum Löschen vormerken. Die Änderungen werden nur in diesem Browser gesammelt – als Datei herunterladen und an Fabrice schicken. Er prüft jede Änderung, bevor sie im Stammbaum erscheint.",
     editsCount: "Änderungen ({n})", editsTitle: "Gesammelte Änderungen", editsNone: "Noch keine Änderungen.",
     editsDownload: "Als Datei herunterladen", editsDiscard: "Alle verwerfen", editsDiscardAsk: "Alle gesammelten Änderungen verwerfen?",
     editsHint: "Die Datei an Fabrice schicken (z. B. per E-Mail). Er prüft jede Änderung einzeln, bevor sie veröffentlicht wird. (Für Fabrice: nach data/cleaned/inbox/ legen und python src/review_edits.py ausführen.)",
@@ -526,6 +532,8 @@ const TEXT = {
     editAddPhoto: "Foto auswählen …", editPhotoDate: "Datum des Fotos", editNewPhoto: "neues Foto",
     editPhotoBad: "Das Bild konnte nicht gelesen werden (JPG, PNG oder WebP).", editStorageFull: "Der Browser-Speicher ist voll – bitte erst die gesammelten Änderungen herunterladen.",
     editAdd: "Hinzufügen", editCancel: "Abbrechen", editParentFull: "Hat schon Vater und Mutter.",
+    editDelete: "Person löschen", editDeleteAsk: "{name} wirklich löschen? Die Person und alle ihre Verbindungen werden nach Fabrices Prüfung aus dem Stammbaum entfernt.",
+    editDeleteMarked: "Zum Löschen vorgemerkt", editUndelete: "Nicht löschen", editDeleteItem: "Person löschen",
     nee: "geb. {name}", neeM: "geb. {name}",
     fGiven: "Vorname(n)", fSurname: "Geburtsname", fMarried: "Ehename", fSex: "Geschlecht", fBirthDate: "Geburtsdatum", fBirthPlace: "Geburtsort",
     fDeathDate: "Sterbedatum", fDeathPlace: "Sterbeort", sexM: "männlich", sexF: "weiblich", sexU: "unbekannt",
@@ -544,7 +552,7 @@ const TEXT = {
     helpPhotos: "<b>Fotos</b> – Fotos bzw. Platzhalter-Figuren ein- oder ausblenden. Klick auf ein Foto vergrößert es; mit ‹ › bzw. Wischen durch weitere Fotos blättern.",
     helpTheme: "<b>Design</b> – zwischen hellem und dunklem Design wechseln.",
     helpLang: "<b>Sprache</b> – Deutsch / Englisch.",
-    helpEdit: "<b>Bearbeiten</b> – Angaben korrigieren, Personen oder Fotos hinzufügen; unter „Änderungen“ als Datei herunterladen und an Fabrice schicken. Nichts wird sofort veröffentlicht.",
+    helpEdit: "<b>Bearbeiten</b> – Angaben korrigieren, Personen oder Fotos hinzufügen, überflüssige Einträge mit „Person löschen“ vormerken; unter „Änderungen“ als Datei herunterladen und an Fabrice schicken. Nichts wird sofort veröffentlicht.",
     helpDirect: "<b>Direkte Linie</b> – Eltern, Großeltern … und Kinder, Enkel … der ausgewählten Person.",
     helpPartners: "<b>Partner</b> – Rahmen und Ehelinie in Blau (Mann) bzw. Rot (Frau).",
     helpDivorced: "<b>Getrennt / geschieden</b> – gepunktete graue Linie zwischen den Partnern.",
@@ -591,7 +599,7 @@ const TEXT = {
     gensHelp: "Limits the selected person's direct line: ↑ how many generations of ancestors, ↓ how many generations of descendants. Empty = all. With Focus, only these generations are shown.",
     photos: "Photos", photosHide: "Hide photos", photosShow: "Show photos",
     selectFirst: "Select a person first.",
-    editMode: "Edit", editHelp: "Edit: correct details, add people and photos. Changes are only collected in this browser – download them as a file and send it to Fabrice. He checks every change before it appears in the family tree.",
+    editMode: "Edit", editHelp: "Edit: correct details, add people and photos, or mark people for deletion. Changes are only collected in this browser – download them as a file and send it to Fabrice. He checks every change before it appears in the family tree.",
     editsCount: "Changes ({n})", editsTitle: "Collected changes", editsNone: "No changes yet.",
     editsDownload: "Download as file", editsDiscard: "Discard all", editsDiscardAsk: "Discard all collected changes?",
     editsHint: "Send the file to Fabrice (e.g. by e-mail). He checks every change before it is published. (For Fabrice: put it into data/cleaned/inbox/ and run python src/review_edits.py.)",
@@ -601,6 +609,8 @@ const TEXT = {
     editAddPhoto: "Choose photo …", editPhotoDate: "Date of the photo", editNewPhoto: "new photo",
     editPhotoBad: "The image could not be read (JPG, PNG or WebP).", editStorageFull: "The browser storage is full – please download the collected changes first.",
     editAdd: "Add", editCancel: "Cancel", editParentFull: "Already has a father and a mother.",
+    editDelete: "Delete person", editDeleteAsk: "Really delete {name}? After Fabrice's review the person and all their links are removed from the family tree.",
+    editDeleteMarked: "Marked for deletion", editUndelete: "Keep person", editDeleteItem: "delete person",
     nee: "née {name}", neeM: "né {name}",
     fGiven: "Given name(s)", fSurname: "Surname at birth", fMarried: "Married name", fSex: "Sex", fBirthDate: "Date of birth", fBirthPlace: "Place of birth",
     fDeathDate: "Date of death", fDeathPlace: "Place of death", sexM: "male", sexF: "female", sexU: "unknown",
@@ -619,7 +629,7 @@ const TEXT = {
     helpPhotos: "<b>Photos</b> – show or hide photos and placeholder figures. Click a photo to enlarge it; use ‹ › or swipe to see further photos.",
     helpTheme: "<b>Appearance</b> – switch between light and dark.",
     helpLang: "<b>Language</b> – German / English.",
-    helpEdit: "<b>Edit</b> – correct details, add people or photos; download them under “Changes” and send the file to Fabrice. Nothing is published right away.",
+    helpEdit: "<b>Edit</b> – correct details, add people or photos, mark stray entries with “Delete person”; download them under “Changes” and send the file to Fabrice. Nothing is published right away.",
     helpDirect: "<b>Direct line</b> – parents, grandparents … and children, grandchildren … of the selected person.",
     helpPartners: "<b>Partners</b> – frame and marriage line in blue (male) or red (female).",
     helpDivorced: "<b>Separated / divorced</b> – dotted grey line between the partners.",
@@ -1645,15 +1655,16 @@ function startViewer(data) {
     ];
     const EDITS_KEY = "stammbaum-edits";
     let editOn = false, adding = null;
-    let edits = { set: {}, add: [], photos: [], seq: 0 };
+    let edits = { set: {}, add: [], photos: [], del: [], seq: 0 };
     try { edits = JSON.parse(localStorage.getItem(EDITS_KEY)) || edits; } catch {}
     edits.photos = edits.photos || [];
+    edits.del = (edits.del || []).filter(id => people.has(id));   // ids marked for deletion (gone after a rebuild)
     const saveEdits = () => {                        // photos make this bigger: report a full browser storage
       try { localStorage.setItem(EDITS_KEY, JSON.stringify(edits)); return true; }
       catch { alert(t("editStorageFull")); return false; }
       finally { updateEditButtons(); }
     };
-    const editCount = () => Object.values(edits.set).reduce((a, o) => a + Object.keys(o).length, 0) + edits.add.length + edits.photos.length;
+    const editCount = () => Object.values(edits.set).reduce((a, o) => a + Object.keys(o).length, 0) + edits.add.length + edits.photos.length + edits.del.length;
     const fieldValue = (p, col, key) => (edits.set[p.id] && col in edits.set[p.id]) ? edits.set[p.id][col] : (p[key] || "");
     const isDate = v => !v || /^\d{4}(-\d{2}(-\d{2})?)?$/.test(v);
     function input(col, kind, value, changed) {
@@ -1690,7 +1701,10 @@ function startViewer(data) {
           <label>${t("editPhotoDate")}</label><input name="PDATE" placeholder="${esc(t("editDateHint"))}">
           <div class="err" hidden></div>
           <div class="row"><input type="file" name="PFILE" accept="image/jpeg,image/png,image/webp" hidden><button type="button" class="btn primary" data-edit="photoPick">${t("editAddPhoto")}</button></div>
-        </form>`;
+        </form>
+        <div class="editDanger">${edits.del.includes(p.id)
+          ? `<p>${t("editDeleteMarked")}</p><button type="button" class="btn" data-edit="undelete">${t("editUndelete")}</button>`
+          : `<button type="button" class="btn danger" data-edit="delete">${t("editDelete")}</button>`}</div>`;
     }
     const formValues = form => Object.fromEntries([...form.elements].filter(el => el.name).map(el => [el.name, el.value.trim()]));
     // shrink a picked image to at most 1600 px (JPEG) so it fits into the browser storage and the file
@@ -1720,6 +1734,12 @@ function startViewer(data) {
       if (what.startsWith("photoDel:")) {
         edits.photos = edits.photos.filter(ph => ph.key !== what.slice(9)); saveEdits(); return showPanel(p);
       }
+      if (what === "delete") {                        // only marks the person; review_edits.py does the rest
+        if (!confirm(t("editDeleteAsk").replace("{name}", fullName(p)))) return;
+        if (!edits.del.includes(p.id)) edits.del.push(p.id);
+        saveEdits(); return showPanel(p);
+      }
+      if (what === "undelete") { edits.del = edits.del.filter(id => id !== p.id); saveEdits(); return showPanel(p); }
       if (["child", "parent", "partner"].includes(what)) { adding = what; return showPanel(p); }
       if (what === "cancelAdd") { adding = null; return showPanel(p); }
       if (what === "reset") { delete edits.set[p.id]; saveEdits(); return showPanel(p); }
@@ -1792,6 +1812,7 @@ function startViewer(data) {
         items.push(`<li><span class="what"><b>${esc(fullName(p))}</b> · ${esc(colLabel(col))}: <del>${esc((key && p[key]) || "–")}</del> → <ins>${esc(val || "–")}</ins></span><button class="x" data-del="set|${pid}|${col}" aria-label="×">×</button></li>`);
       }
       for (const ph of edits.photos) items.push(`<li><img class="thumb" src="${ph.src}" alt=""><span class="what"><b>${esc(fullName(people.get(ph.id)))}</b> · ${t("editNewPhoto")} (${esc(ph.date ? fmtDate(ph.date) : t("photoUndated"))})</span><button class="x" data-del="photo|${ph.key}" aria-label="×">×</button></li>`);
+      for (const id of edits.del) items.push(`<li class="del"><span class="what"><b>${esc(fullName(people.get(id)))}</b> · ${t("editDeleteItem")}</span><button class="x" data-del="del|${id}" aria-label="×">×</button></li>`);
       for (const a of edits.add) items.push(`<li><span class="what"><b>${t("editNew")}: ${esc([a.cols.GIVN, a.cols.SURN].filter(Boolean).join(" "))}</b> · ${esc(a.note)}</span><button class="x" data-del="add|${a.id}" aria-label="×">×</button></li>`);
       document.getElementById("editsBody").innerHTML = (items.length ? `<ul>${items.join("")}</ul>` : `<p>${t("editsNone")}</p>`) + `<p class="sub">${t("editsHint")}</p>`;
       document.getElementById("editsDownload").textContent = t("editsDownload");
@@ -1804,6 +1825,7 @@ function startViewer(data) {
       const b = ev.target.closest("[data-del]"); if (!b) return;
       const [kind, id, col] = b.dataset.del.split("|");
       if (kind === "photo") edits.photos = edits.photos.filter(ph => ph.key !== id);
+      else if (kind === "del") edits.del = edits.del.filter(x => x !== id);
       else if (kind === "set") { delete edits.set[id][col]; if (!Object.keys(edits.set[id]).length) delete edits.set[id]; }
       else {                                          // a removed new person also loses its links
         edits.add = edits.add.filter(a => a.id !== id);
@@ -1813,7 +1835,7 @@ function startViewer(data) {
     });
     document.getElementById("editsDiscard").onclick = () => {
       if (!confirm(t("editsDiscardAsk"))) return;
-      edits = { set: {}, add: [], photos: [], seq: 0 }; saveEdits(); renderEdits(); if (selected) showPanel(people.get(selected));
+      edits = { set: {}, add: [], photos: [], del: [], seq: 0 }; saveEdits(); renderEdits(); if (selected) showPanel(people.get(selected));
     };
     document.getElementById("editsDownload").onclick = () => {
       const clean = v => String(v).replace(/\t/g, " ").replace(/\r?\n|\r/g, "\\n");
@@ -1823,6 +1845,7 @@ function startViewer(data) {
         lines.push(["set", pid, col, clean((key && p[key]) || ""), clean(val)].join("\t"));
       }
       for (const ph of edits.photos) lines.push(["photo", ph.id, ph.date || "", clean(ph.name || ""), ph.src].join("\t"));
+      for (const id of edits.del) lines.push(["delete", id, "", clean(fullName(people.get(id))), ""].join("	"));
       for (const a of edits.add) for (const [col, val] of Object.entries(a.cols)) lines.push(["new", a.id, col, "", clean(val)].join("\t"));
       const d = new Date(), two = n => String(n).padStart(2, "0");    // local time, sorts by date
       const stamp = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}_${two(d.getHours())}-${two(d.getMinutes())}`;
