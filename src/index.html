@@ -819,6 +819,48 @@ function startViewer(data) {
     }
     return { graph, blocksUsed, famsUsed };
   }
+  // Siblings left to right = youngest to oldest. ELK orders them freely (and differently for every
+  // Fokus subset), so after each layout the child blocks of one family that share a row are re-placed:
+  // equal widths simply swap slots; otherwise they are packed into the same span if no other card is there.
+  function orderSiblings(P, blocksUsed, famsUsed, keep) {
+    const vis = visIn(keep);
+    const box = bid => { const ids = blocksUsed.get(bid);
+      return { bid, ids, x0: P.get(ids[0]).x - W / 2, w: ids.length * W + (ids.length - 1) * GAP, y: P.get(ids[0]).y }; };
+    for (const f of famsUsed) {
+      const parentBlock = blockOf.get(partnersIn(f, keep)[0]);
+      const year = new Map();                        // child block -> birth year of the child in it
+      for (const c of f.children) {
+        const b = blockOf.get(c);
+        if (vis(c) && blocksUsed.has(b) && b !== parentBlock && !year.has(b)) year.set(b, people.get(c).by ?? -Infinity);
+      }
+      if (year.size < 2) continue;
+      const rows = new Map();
+      for (const [bid, yr] of year) { const bx = box(bid); bx.yr = yr; (rows.get(bx.y) || rows.set(bx.y, []).get(bx.y)).push(bx); }
+      for (const row of rows.values()) {
+        if (row.length < 2) continue;
+        const cur = row.slice().sort((a, b) => a.x0 - b.x0);
+        const want = row.slice().sort((a, b) => (b.yr - a.yr) || (a.x0 - b.x0));   // youngest first, unknown last
+        if (want.every((b, i) => b === cur[i])) continue;
+        let placed;
+        if (want.every(b => b.w === want[0].w)) placed = want.map((b, i) => [b, cur[i].x0]);
+        else {                                         // pack left to right, stepping over other families' cards
+          const inRow = new Set(row.map(r => r.bid)), y = row[0].y;
+          const obstacles = [...blocksUsed.keys()].filter(o => !inRow.has(o)).map(box).filter(o => o.y === y);
+          const right = cur[cur.length - 1].x0 + cur[cur.length - 1].w;
+          let x = cur[0].x0;
+          placed = want.map(b => {
+            for (let moved = true; moved;) {
+              moved = false;
+              for (const o of obstacles) if (o.x0 < x + b.w + 20 && o.x0 + o.w > x - 20) { x = o.x0 + o.w + 40; moved = true; }
+            }
+            const at = [b, x]; x += b.w + 40; return at;
+          });
+          if (x - 40 > right + 2 * W) continue;        // would push the siblings far away: keep ELK's order
+        }
+        for (const [b, x0] of placed) b.ids.forEach((id, i) => { P.get(id).x = x0 + W / 2 + i * (W + GAP); });
+      }
+    }
+  }
   async function computeLayout(keep) {
     const { graph, blocksUsed, famsUsed } = elkGraphFor(keep);
     const laid = await new ELK().layout(graph);
@@ -829,6 +871,7 @@ function startViewer(data) {
       let x = MARGIN + b.x + W / 2;
       for (const id of ids) { P.set(id, { x, y: MARGIN + b.y + H / 2 }); x += W + GAP; }
     }
+    orderSiblings(P, blocksUsed, famsUsed, keep);
     for (const f of famsUsed) {                                 // family dot between the partners
       const ps = partnersIn(f, keep).map(id => P.get(id));
       const n = node.get(f.id);
