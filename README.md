@@ -89,6 +89,8 @@ person's info panel, e.g. `I81`) plus an optional date: `I81_2019-06-12.jpg`, `I
 `I81_2019.jpg` or just `I81.jpg`. `Surname_Given_2019.jpg` also works, but only if exactly one person
 has that name (the build prints a warning otherwise). A person can have several photos: the card shows
 the newest; clicking it opens all of them (‹ › or swipe). JPG, PNG and WebP; ~1200 px wide is plenty.
+**Caption:** a text file with the same name next to the photo (`I81_2019.jpg` + `I81_2019.txt`) is shown
+under the enlarged photo. A group photo goes to each person as its own copy (`I61.jpg`, `I454.jpg`).
 The build embeds them in the data, so `--publish` encrypts them like everything else.
 
 ### Update the website after changing the tree

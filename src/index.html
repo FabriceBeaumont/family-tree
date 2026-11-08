@@ -105,7 +105,10 @@
   #pbImg { width: 100%; height: 100%; object-fit: contain; min-height: 0; touch-action: pan-y; user-select: none; -webkit-user-drag: none; }
   #photoBox .pbCap { display: flex; gap: 12px; justify-content: center; align-items: baseline; padding: 10px 16px 14px;
     font-size: 14px; background: rgba(0, 0, 0, .85); }
+  #photoBox .pbCap { flex-wrap: wrap; }
   #photoBox .pbCap #photoName { font-weight: 600; }
+  #photoBox .pbCap #pbNote { flex-basis: 100%; text-align: center; color: #e5e5ea; line-height: 1.4; }
+  #photoBox .pbCap #pbNote:empty { display: none; }
   #photoBox .pbCap #pbDate, #photoBox .pbCap #pbCount { color: #c7c7cc; font-variant-numeric: tabular-nums; }
   #photoBox button { position: absolute; border: 0; cursor: pointer; color: #fff; background: rgba(40, 40, 44, .65);
     -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
@@ -467,7 +470,7 @@
   <button type="button" class="pbNav prev" id="pbPrev" data-i18n-attr="aria-label:photoPrev;title:photoPrev">‹</button>
   <img id="pbImg" alt="">
   <button type="button" class="pbNav next" id="pbNext" data-i18n-attr="aria-label:photoNext;title:photoNext">›</button>
-  <div class="pbCap"><span id="photoName"></span><span id="pbDate"></span><span id="pbCount"></span></div>
+  <div class="pbCap"><span id="pbNote"></span><span id="photoName"></span><span id="pbDate"></span><span id="pbCount"></span></div>
 </dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
@@ -1818,6 +1821,7 @@ function startViewer(data) {
       document.getElementById("pbImg").src = ph.src;
       document.getElementById("pbImg").alt = fullName(pbPerson);
       document.getElementById("photoName").textContent = fullName(pbPerson);
+      document.getElementById("pbNote").textContent = ph.note || "";
       document.getElementById("pbDate").textContent = ph.date ? fmtDate(ph.date) : t("photoUndated");
       document.getElementById("pbCount").textContent = n > 1 ? `${pbIndex + 1}/${n}` : "";
       document.getElementById("pbPrev").hidden = document.getElementById("pbNext").hidden = n < 2;

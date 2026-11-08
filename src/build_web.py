@@ -73,6 +73,17 @@ IMG_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", "
 PHOTO_WARN_BYTES = 800_000
 
 
+def photo_entry(date: str, path: Path) -> dict:
+    """{src, date?, note?} - note = caption from a text file next to the photo (I61_1899.jpg + I61_1899.txt)."""
+    entry = {"src": photo_uri(path), **({"date": date} if date else {})}
+    note_file = path.with_suffix(".txt")
+    if note_file.is_file():
+        note = note_file.read_text(encoding="utf-8-sig").strip()
+        if note:
+            entry["note"] = note
+    return entry
+
+
 PHOTO_DATE_RE = re.compile(r"(?:^|_)(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?$")
 
 
@@ -200,7 +211,7 @@ def build(rows: list[dict[str, str]]) -> dict:
         if linked and all(f != linked for _, f in items):
             items.append(("", linked))
         if items:
-            p["photos"] = [{"src": photo_uri(f), **({"date": d} if d else {})} for d, f in items]
+            p["photos"] = [photo_entry(d, f) for d, f in items]
 
     # Families keyed by (father, mother). Built from child->parent links first,
     # then from spouse links so childless couples also appear.
