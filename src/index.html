@@ -898,14 +898,18 @@ function startViewer(data) {
     let focusOn = false, focusStrict = false, lastFocusSet = EMPTY, focusKey = "", layoutToken = 0;
     // Strict focus: drop people without any parent, child or partner in the set (repeat until stable),
     // then keep only the family dots that still connect someone.
+    // Strict focus: only people connected to the selected person through people who are visible
+    // themselves (parents, partners, children - step by step). Separate groups that show up at a
+    // generation limit disappear. Without a selection: drop only cards linked to nobody visible.
     function withoutLooseCards(set) {
-      const ids = new Set([...set].filter(id => people.has(id)));
-      const linked = id => [...parentIds(id), ...people.get(id).spouseFams.flatMap(fid => {
-        const f = fams.get(fid); return [f.husband, f.wife, ...f.children]; })].some(x => x && x !== id && ids.has(x));
-      for (let changed = true; changed;) {
-        changed = false;
-        for (const id of [...ids]) if (id !== selected && !linked(id)) { ids.delete(id); changed = true; }
-      }
+      const all = new Set([...set].filter(id => people.has(id)));
+      const neighbours = id => [...parentIds(id), ...people.get(id).spouseFams.flatMap(fid => {
+        const f = fams.get(fid); return [f.husband, f.wife, ...f.children]; })].filter(x => x && x !== id && all.has(x));
+      let ids;
+      if (selected && all.has(selected)) {
+        ids = new Set([selected]);
+        for (const todo = [selected]; todo.length;) for (const n of neighbours(todo.pop())) if (!ids.has(n)) { ids.add(n); todo.push(n); }
+      } else ids = new Set([...all].filter(id => neighbours(id).length));
       const out = new Set(ids);
       for (const id of set) if (fams.has(id)) {
         const f = fams.get(id), ps = partnersIn(f, ids).length, kids = f.children.some(c => ids.has(c));
